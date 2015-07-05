@@ -1,0 +1,77 @@
+<?xml version="1.0" ?>
+<gfx-xform version="1">
+    <input file="tileset.png" type="png" tile-width="8" tile-height="8"/>
+    <output file="tileset.inc">
+        <tiles var-name="tileset"/>
+        <maps pointers-size="8">
+            <!-- Top Menu -->
+            <map var-name="titleMap" left="0" top="1" width="28" height="6"/>
+
+            <!-- Greed -->
+            <map var-name="battery0Map" left="0" top="7" width="3" height="2"/>
+            <map var-name="battery1Map" left="3" top="7" width="3" height="2"/>
+            <map var-name="battery2Map" left="6" top="7" width="3" height="2"/>
+            <map var-name="battery3Map" left="9" top="7" width="3" height="2"/>
+            <map var-name="battery4Map" left="12" top="7"
+                width="3" height="2"/>
+
+            <!-- Rich -->
+            <map var-name="closedChestMap"
+                left="16" top="7" width="4" height="3"/>
+            <map var-name="openChestMap"
+                left="20" top="7" width="4" height="3"/>
+            <map var-name="phoneMap"
+                left="24" top="7" width="4" height="3"/>
+
+            <!-- 15 Puzzle -->
+            <map var-name="boxMap"
+                left="29" top="3" width="6" height="5"/>
+
+            <!-- Wumpus -->
+            <map var-name="clearRoomMap"
+                left="36" top="3" width="2" height="2"/>
+            <map var-name="bothRoomMap"
+                left="38" top="3" width="2" height="2"/>
+            <map var-name="greenRoomMap"
+                left="40" top="3" width="2" height="2"/>
+            <map var-name="holeMap"
+                left="42" top="3" width="2" height="2"/>
+            <map var-name="corridor1Map"
+                left="42" top="5" width="2" height="2"/>
+            <map var-name="corridor2Map"
+                left="44" top="5" width="2" height="2"/>
+            <map var-name="redRoomMap"
+                left="40" top="5" width="2" height="2"/>
+            <map var-name="wumpusMap"
+                left="38" top="5" width="2" height="2"/>
+            <map var-name="guyMap"
+                left="36" top="5" width="2" height="2"/>
+            <map var-name="greenGuyMap"
+                left="36" top="7" width="2" height="2"/>
+            <map var-name="redGuyMap"
+                left="38" top="7" width="2" height="2"/>
+            <map var-name="bothGuyMap"
+                left="40" top="7" width="2" height="2"/>
+            <map var-name="targetMap"
+                left="42" top="7" width="2" height="2"/>
+
+            <!-- Rain -->
+            <map var-name="canonMap"
+                left="1" top="10" width="1" height="2"/>
+
+            <!-- Trollen -->
+            <map var-name="symbolMap" left="9" top="13"
+                width="2" height="2"/>
+            <map var-name="trollGuyMap" left="11" top="13"
+                width="2" height="2"/>
+            <map var-name="hTrollMap" left="13" top="13"
+                width="2" height="2"/>
+            <map var-name="vTrollMap" left="15" top="13"
+                width="2" height="2"/>
+            <map var-name="stunnedHTrollMap" left="15" top="13"
+                width="2" height="2"/>
+            <map var-name="stunnedVTrollMap" left="17" top="13"
+                width="2" height="2"/>
+        </maps>
+    </output>
+</gfx-xform>
