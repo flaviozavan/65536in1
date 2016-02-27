@@ -154,7 +154,7 @@ void sort(uint8_t human);
 uint16_t topmenu();
 int main();
 
-void controllerStart(){
+void controllerStart() {
   held[0] = ReadJoypad(0);
   pressed[0] = held[0] & (held[0] ^ prev[0]);
   released[0] = prev[0] & (held[0] ^ prev[0]);
@@ -164,12 +164,12 @@ void controllerStart(){
   released[1] = prev[1] & (held[1] ^ prev[1]);
 }
 
-void controllerEnd(){
+void controllerEnd() {
   prev[0] = held[0];
   prev[1] = held[1];
 }
 
-void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base){
+void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base) {
   SetTile(x--, y, base + (byte % 10));
 
   byte /= 10;
@@ -179,7 +179,7 @@ void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base){
   SetTile(x--, y, (byte? base + (byte % 10) : 0));
 }
 
-void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base){
+void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base) {
   /* Print exactly two digits with zero padding */
   SetTile(x--, y, base + (byte % 10));
 
@@ -187,7 +187,7 @@ void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base){
   SetTile(x--, y, base + (byte % 10));
 }
 
-void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base){
+void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base) {
   SetTile(x--, y, base + (value % 10));
   value /= 10;
 
@@ -199,7 +199,7 @@ void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base){
   SetTile(x--, y, base + (value % 10));
   value /= 10;
 
-  while(value){
+  while (value) {
     SetTile(x--, y, base + (value % 10));
     value /= 10;
   }
@@ -207,17 +207,17 @@ void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base){
   SetTile(x, y, '$' - ' ');
 }
 
-void greed(uint8_t human){
+void greed(uint8_t human) {
   uint8_t i, n, t, s, v, w, xor, h, nv, d;
   uint8_t array[5];
 
   ClearVram();
 
   /* Randomly generate a new game and draw on the screen */
-  for(i = 0; i < 5; i++){
+  for(i = 0; i < 5; i++) {
     array[i] = (random() % 8) + 1;
     PrintByte(5 + 5 * i, 24, array[i], 0);
-    for(n = 0; n < array[i]; n++){
+    for(n = 0; n < array[i]; n++) {
       DrawMap2(3 + 5 * i, 21 - (n << 1),
         (const char *) pgm_read_word(batteries + i));
     }
@@ -233,29 +233,29 @@ void greed(uint8_t human){
   SetTile(15, 4, WHITE_NUMBER + 1 + t);
   printColoredByte(5, 24, array[0], BLUE_NUMBER);
 
-  while(1){
+  while (1) {
     controllerStart();
 
     /* Select returns to the menu */
-    if(pressed[0] & BTN_SELECT){
+    if (pressed[0] & BTN_SELECT) {
       return;
     }
 
-    if(!t || human){
-      if(!s){
+    if (!t || human) {
+      if (!s) {
         /* Choosing a pile */
-        if(pressed[t] & BTN_RIGHT){
+        if (pressed[t] & BTN_RIGHT) {
           greed_move_right:
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
           w = (w + 1) % 5;
           printColoredByte(5 + 5 * w, 24, array[w], BLUE_NUMBER);
         }
-        else if(pressed[t] & BTN_LEFT){
+        else if (pressed[t] & BTN_LEFT) {
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
           w = (10 + w - 1) % 5;
           printColoredByte(5 + 5 * w, 24, array[w], BLUE_NUMBER);
         }
-        else if(pressed[t] & BTN_A && array[w]){
+        else if (pressed[t] & BTN_A && array[w]) {
           greed_select:
           s = (t && !human? 2 : 1);
           v = array[w];
@@ -264,25 +264,25 @@ void greed(uint8_t human){
       }
       /* Reducing */
       else {
-        if(pressed[t] & BTN_DOWN && v){
+        if (pressed[t] & BTN_DOWN && v) {
           greed_reduce:
           Fill(3 + 5 * w, 21 - (--v << 1), 3, 2, 0);
           printColoredByte(5 + 5 * w, 24, v, GREEN_NUMBER);
         }
-        else if(pressed[t] & BTN_UP && v < array[w]){
+        else if (pressed[t] & BTN_UP && v < array[w]) {
           DrawMap2(3 + 5 * w, 21 - (v << 1),
             (const char *) pgm_read_word(batteries + w));
           printColoredByte(5 + 5 * w, 24, ++v, GREEN_NUMBER);
         }
-        else if(pressed[t] & BTN_B){
-          for(i = 0; i < array[w]; i++){
+        else if (pressed[t] & BTN_B) {
+          for(i = 0; i < array[w]; i++) {
             DrawMap2(3 + 5 * w, 21 - (i << 1),
               (const char *) pgm_read_word(batteries + w));
           }
           s = 0;
           printColoredByte(5 + 5 * w, 24, array[w], BLUE_NUMBER);
         }
-        else if(pressed[t] & BTN_A && v < array[w]){
+        else if (pressed[t] & BTN_A && v < array[w]) {
           greed_apply:
           array[w] = v;
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
@@ -294,12 +294,12 @@ void greed(uint8_t human){
           SetTile(15, 4, WHITE_NUMBER + 1 + t);
 
           /* Check for victory */
-          for(i = 0; i < 5; i++){
-            if(array[i]){
+          for(i = 0; i < 5; i++) {
+            if (array[i]) {
               break;
             }
           }
-          if(i == 5){
+          if (i == 5) {
             break;
           }
 
@@ -308,20 +308,20 @@ void greed(uint8_t human){
     }
     else {
       /* AI */
-      if(!s){
+      if (!s) {
         s = 1;
         d = CPU_DELAY;
 
         /* Calculate the play */
         xor = 0;
-        for(i = 0; i < 5; i++){
+        for(i = 0; i < 5; i++) {
           xor ^= array[i];
         }
 
         /* No winning strategy */
-        if(!xor){
-          for(i = 0; i < 5; i++){
-            if(array[i]){
+        if (!xor) {
+          for(i = 0; i < 5; i++) {
+            if (array[i]) {
               n = i;
               break;
             }
@@ -332,14 +332,14 @@ void greed(uint8_t human){
         }
 
         /* The if is going to be met because xor != 0 */
-        for(h = 3; ; h--){
-          if(xor & (1 << h)){
+        for(h = 3; ; h--) {
+          if (xor & (1 << h)) {
             break;
           }
         }
 
-        for(i = 0; i < 5; i++){
-          if(array[i] & (1 << h)){
+        for(i = 0; i < 5; i++) {
+          if (array[i] & (1 << h)) {
             n = i;
             break;
           }
@@ -347,16 +347,16 @@ void greed(uint8_t human){
 
         nv = xor ^ array[n];
       }
-      else if(s == 1){
+      else if (s == 1) {
         /* Select the right pile */
-        if(d){
+        if (d) {
           d--;
           goto greed_finish;
         }
 
         d = CPU_DELAY;
 
-        if(w != n){
+        if (w != n) {
           goto greed_move_right;
         }
         else {
@@ -365,14 +365,14 @@ void greed(uint8_t human){
       }
       else {
         /* Reduce */
-        if(d){
+        if (d) {
           d--;
           goto greed_finish;
         }
 
         d = CPU_DELAY;
 
-        if(v != nv){
+        if (v != nv) {
           goto greed_reduce;
         }
         else {
@@ -392,10 +392,10 @@ void greed(uint8_t human){
   SetTile(15, 4, WHITE_NUMBER + 1 + !t);
 
   /* Wait one of the players to press start */
-  while(1){
+  while (1) {
     controllerStart();
 
-    if(pressed[0] & BTN_START || (human && pressed[1] & BTN_START)){
+    if (pressed[0] & BTN_START || (human && pressed[1] & BTN_START)) {
       controllerEnd();
       break;
     }
@@ -405,13 +405,13 @@ void greed(uint8_t human){
   }
 }
 
-void printChests(uint8_t *available){
+void printChests(uint8_t *available) {
   uint8_t y, x, i;
 
   x = 3;
   y = 4;
-  for(i = 0; i < 26; i++){
-    if(!available[i]){
+  for(i = 0; i < 26; i++) {
+    if (!available[i]) {
       continue;
     }
 
@@ -419,26 +419,26 @@ void printChests(uint8_t *available){
     printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
 
     x += 5;
-    if(x > 23){
+    if (x > 23) {
       x = 3;
       y += 4;
     }
   }
 }
 
-void rich(){
+void rich() {
   uint8_t i, n, s, left;
   uint8_t y, x;
   uint32_t r;
   uint8_t available[27];
   uint8_t order[26];
   memset(available, 1, sizeof(available));
-  for(i = 0; i < 26; i++){
+  for(i = 0; i < 26; i++) {
     order[i] = i;
   }
 
   /* Randomize */
-  for(i = 0; i < 26; i++){
+  for(i = 0; i < 26; i++) {
     n = (random() % (26 - i)) + i;
 
     s = order[i];
@@ -452,18 +452,18 @@ void rich(){
   Print(4, 6, strStarting);
   DrawMap2(13, 12, closedChestMap);
   printColoredByte2(15, 13, 0, GREEN_NUMBER);
-  while(1){
+  while (1) {
     controllerStart();
 
-    if(pressed[0] & BTN_DOWN || pressed[0] & BTN_LEFT){
+    if (pressed[0] & BTN_DOWN || pressed[0] & BTN_LEFT) {
       s = (25 + s) % 26;
       printColoredByte2(15, 13, s, GREEN_NUMBER);
     }
-    else if(pressed[0] & BTN_UP || pressed[0] & BTN_RIGHT){
+    else if (pressed[0] & BTN_UP || pressed[0] & BTN_RIGHT) {
       s = (s + 1) % 26;
       printColoredByte2(15, 13, s, GREEN_NUMBER);
     }
-    else if(pressed[0] & BTN_A){
+    else if (pressed[0] & BTN_A) {
       available[s] = 0;
       controllerEnd();
       break;
@@ -477,7 +477,7 @@ void rich(){
   r = 0;
 
   /* Play */
-  while(1){
+  while (1) {
     /* Pick a chest */
     ClearVram();
     printChests(available);
@@ -486,22 +486,22 @@ void rich(){
     printColoredByte2(5, 5, i, BLUE_NUMBER);
     x = 3;
     y = 4;
-    while(1){
+    while (1) {
       controllerStart();
 
-      if(pressed[0] & BTN_RIGHT){
+      if (pressed[0] & BTN_RIGHT) {
         printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
 
         /* The array is 27 elements long, and 26 is always one */
         for(i = i + 1; !available[i]; i++);
-        if(i == 26){
+        if (i == 26) {
           for(i = 0; !available[i]; i++);
           x = 3;
           y = 4;
         }
         else {
           x += 5;
-          if(x > 23){
+          if (x > 23) {
             x = 3;
             y += 4;
           }
@@ -509,18 +509,18 @@ void rich(){
 
         printColoredByte2(x + 2, y + 1, i, BLUE_NUMBER);
       }
-      else if(pressed[0] & BTN_LEFT){
+      else if (pressed[0] & BTN_LEFT) {
         printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
 
         for(i = i - 1; !available[i] && i < 255; i--);
-        if(i == 255){
+        if (i == 255) {
           for(i = 25; !available[i]; i--);
           x = 3 + ((left - 1) % 5) * 5;
           y = 4 + ((left - 1) / 5) * 4;
         }
         else {
           x -= 5;
-          if(x > 23){
+          if (x > 23) {
             x = 23;
             y -= 4;
           }
@@ -528,11 +528,11 @@ void rich(){
 
         printColoredByte2(x + 2, y + 1, i, BLUE_NUMBER);
       }
-      else if(pressed[0] & BTN_A){
+      else if (pressed[0] & BTN_A) {
         controllerEnd();
         break;
       }
-      else if(pressed[0] & BTN_SELECT){
+      else if (pressed[0] & BTN_SELECT) {
         controllerEnd();
         return;
       }
@@ -556,14 +556,14 @@ void rich(){
     printMoney(19, 10, pgm_read_dword(prizes + order[i]), WHITE_NUMBER);
 
     /* Wait for the input */
-    while(1){
+    while (1) {
       controllerStart();
 
-      if(pressed[0] & BTN_A){
+      if (pressed[0] & BTN_A) {
         controllerEnd();
         break;
       }
-      else if(pressed[0] & BTN_SELECT){
+      else if (pressed[0] & BTN_SELECT) {
         controllerEnd();
         return;
       }
@@ -573,14 +573,14 @@ void rich(){
     }
 
     /* Offer */
-    if(left != 20 && left != 15 && left != 10 && left != 6 && left != 4
-      && left != 2 && left != 1){
+    if (left != 20 && left != 15 && left != 10 && left != 6 && left != 4
+      && left != 2 && left != 1) {
 
       continue;
     }
 
     /* Switch chests */
-    if(left == 1){
+    if (left == 1) {
       ClearVram();
 
       for(i = 0; !available[i]; i++);
@@ -595,11 +595,11 @@ void rich(){
       SetTile(10, 15, ARROW_TILE);
 
       n = 0;
-      while(1){
+      while (1) {
         controllerStart();
 
-        if(pressed[0] & BTN_A){
-          if(n){
+        if (pressed[0] & BTN_A) {
+          if (n) {
             s ^= i;
             i ^= s;
             s ^= i;
@@ -621,10 +621,10 @@ void rich(){
             WHITE_NUMBER);
 
           /* Wait for the input */
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_A){
+            if (pressed[0] & BTN_A) {
               controllerEnd();
               break;
             }
@@ -634,12 +634,12 @@ void rich(){
           }
           break;
         }
-        else if(pressed[0] & BTN_DOWN || pressed[0] & BTN_UP){
+        else if (pressed[0] & BTN_DOWN || pressed[0] & BTN_UP) {
           SetTile(10, 15 + n, 0);
           n ^= 1;
           SetTile(10, 15 + n, ARROW_TILE);
         }
-        else if(pressed[0] & BTN_SELECT){
+        else if (pressed[0] & BTN_SELECT) {
           controllerEnd();
           return;
         }
@@ -654,8 +654,8 @@ void rich(){
     /* Calculate the average */
     r = 0;
     n = 0;
-    for(i = 0; i < 26; i++){
-      if(available[i] || i == s){
+    for(i = 0; i < 26; i++) {
+      if (available[i] || i == s) {
         r += pgm_read_dword(prizes + order[i]);
         n++;
       }
@@ -681,23 +681,23 @@ void rich(){
 
     /* Read the input */
     i = 0;
-    while(1){
+    while (1) {
       controllerStart();
 
-      if(pressed[0] & BTN_A){
+      if (pressed[0] & BTN_A) {
         controllerEnd();
 
-        if(!i){
+        if (!i) {
           goto rich_ending;
         }
         break;
       }
-      else if(pressed[0] & BTN_UP || pressed[0] & BTN_DOWN){
+      else if (pressed[0] & BTN_UP || pressed[0] & BTN_DOWN) {
         SetTile(10, 18 + i, 0);
         i ^= 1;
         SetTile(10, 18 + i, ARROW_TILE);
       }
-      else if(pressed[0] & BTN_SELECT){
+      else if (pressed[0] & BTN_SELECT) {
         controllerEnd();
         return;
       }
@@ -714,10 +714,10 @@ void rich(){
   printMoney(20, 9, r, WHITE_NUMBER);
   DrawMap2(13, 11, openChestMap);
 
-  while(1){
+  while (1) {
     controllerStart();
 
-    if(pressed[0] & BTN_START){
+    if (pressed[0] & BTN_START) {
       controllerEnd();
       break;
     }
@@ -727,13 +727,13 @@ void rich(){
   }
 }
 
-uint8_t testSlide(uint8_t *m){
+uint8_t testSlide(uint8_t *m) {
   int i;
-  for(i = 0; i < 16; i++) if(m[i] != i) return 0;
+  for(i = 0; i < 16; i++) if (m[i] != i) return 0;
   return 1;
 }
 
-void switchSlide(uint8_t p, uint8_t o, uint8_t *m){
+void switchSlide(uint8_t p, uint8_t o, uint8_t *m) {
   m[p] = m[o];
   m[o] = 0;
   DrawMap2((p & 3) * 6 + 3, (p >> 2) * 5 + 4, boxMap);
@@ -744,24 +744,24 @@ void switchSlide(uint8_t p, uint8_t o, uint8_t *m){
   Fill((o & 3) * 6 + 3, (o >> 2) * 5 + 4, 6, 5, 0);
 }
 
-void slide(){
+void slide() {
   uint8_t m[16];
   uint8_t i, p;
 
-  for(i = 0; i < 16; i++){
+  for(i = 0; i < 16; i++) {
     m[i] = i;
   }
 
   /* Randomize the board */
-  for(i = 0; i < 15; i++){
+  for(i = 0; i < 15; i++) {
     p = (random() % (16 - i)) + i;
-    if(p != i){
+    if (p != i) {
       m[p] ^= m[i];
       m[i] ^= m[p];
       m[p] ^= m[i];
     }
   }
-  if(testSlide(m)){
+  if (testSlide(m)) {
     m[0] = 1;
     m[1] = 0;
   }
@@ -769,8 +769,8 @@ void slide(){
 
   /* Draw the initial state */
   ClearVram();
-  for(i = 0; i < 16; i++){
-    if(!m[i]) continue;
+  for(i = 0; i < 16; i++) {
+    if (!m[i]) continue;
     DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4, boxMap);
     printColoredByte2((i & 3) * 6 + 6,
       (i >> 2) * 5 + 6, m[i],
@@ -778,46 +778,46 @@ void slide(){
   }
 
   /* Process the input */
-  while(1){
+  while (1) {
     controllerStart();
 
-    if(pressed[0] & BTN_UP && (p >> 2) < 3){
+    if (pressed[0] & BTN_UP && (p >> 2) < 3) {
       switchSlide(p, p + 4, m);
       p += 4;
 
-      if(testSlide(m)){
+      if (testSlide(m)) {
         controllerEnd();
         break;
       }
     }
-    else if(pressed[0] & BTN_DOWN && p >> 2){
+    else if (pressed[0] & BTN_DOWN && p >> 2) {
       switchSlide(p, p - 4, m);
       p -= 4;
 
-      if(testSlide(m)){
+      if (testSlide(m)) {
         controllerEnd();
         break;
       }
     }
-    else if(pressed[0] & BTN_LEFT && (p & 3) < 3){
+    else if (pressed[0] & BTN_LEFT && (p & 3) < 3) {
       switchSlide(p, p + 1, m);
       p += 1;
 
-      if(testSlide(m)){
+      if (testSlide(m)) {
         controllerEnd();
         break;
       }
     }
-    else if(pressed[0] & BTN_RIGHT && p & 3){
+    else if (pressed[0] & BTN_RIGHT && p & 3) {
       switchSlide(p, p - 1, m);
       p -= 1;
 
-      if(testSlide(m)){
+      if (testSlide(m)) {
         controllerEnd();
         break;
       }
     }
-    else if(pressed[0] & BTN_SELECT){
+    else if (pressed[0] & BTN_SELECT) {
       controllerEnd();
       return;
     }
@@ -829,9 +829,9 @@ void slide(){
   /* Winning screen */
   ClearVram();
   Print(8, 12, strCongrat);
-  while(1){
+  while (1) {
     controllerStart();
-    if(pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START) break;
     WaitVsync(1);
     controllerEnd();
   }
@@ -839,13 +839,13 @@ void slide(){
 }
 
 /* No memory for recursion */
-uint8_t getParent(uint8_t v){
+uint8_t getParent(uint8_t v) {
   uint8_t i, o;
 
   for(i = v; parent[i] != i; i = parent[i]);
   o = parent[v];
   parent[v] = i;
-  for(; parent[v] != v; v = o){
+  for(; parent[v] != v; v = o) {
     o = parent[v];
     parent[v] = i;
   }
@@ -853,7 +853,7 @@ uint8_t getParent(uint8_t v){
   return i;
 }
 
-uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l){
+uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l) {
   uint8_t i, y, x, yy, xx, d;
   /* 255 == -1 because of the overflow */
   const uint8_t dx[] = {0, 1, 0, 255};
@@ -865,23 +865,23 @@ uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l){
     };
 
   /* Parent array for the union find structure */
-  for(y = 0; y < CAVE_HEIGHT; y++){
-    for(x = 0; x < CAVE_WIDTH; x++){
+  for(y = 0; y < CAVE_HEIGHT; y++) {
+    for(x = 0; x < CAVE_WIDTH; x++) {
       parent[(y << 4) | x] = (y << 4) | x;
     }
   }
 
   /* Union all the edges */
-  for(y = 0; y < CAVE_HEIGHT; y++){
-    for(x = 0; x < CAVE_WIDTH; x++){
-      if(map[y][x] == HOLE_ROOM) continue;
-      for(i = 0; i < 4; i++){
+  for(y = 0; y < CAVE_HEIGHT; y++) {
+    for(x = 0; x < CAVE_WIDTH; x++) {
+      if (map[y][x] == HOLE_ROOM) continue;
+      for(i = 0; i < 4; i++) {
         yy = y + CAVE_HEIGHT + dy[i];
         yy %= CAVE_HEIGHT;
         xx = x + CAVE_WIDTH + dx[i];
         xx %= CAVE_WIDTH;
         d = i;
-        while(map[yy][xx] >= CORRIDOR){
+        while (map[yy][xx] >= CORRIDOR) {
           /* No += and no % on the same line,
            * weirdest casting related bugs. */
           d = cor[map[yy][xx] - CORRIDOR][d];
@@ -891,14 +891,14 @@ uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l){
           xx %= CAVE_WIDTH;
 
           /* Detect and reject corridor loops */
-          if(yy == y && xx == x && map[y][x] >= CORRIDOR)
+          if (yy == y && xx == x && map[y][x] >= CORRIDOR)
             return 0;
         }
 
         /* Don't union holes or corridors */
-        if(map[y][x] < CORRIDOR &&
+        if (map[y][x] < CORRIDOR &&
           map[yy][xx] != HOLE_ROOM &&
-          getParent((y << 4) | x) != getParent((yy << 4) | xx)){
+          getParent((y << 4) | x) != getParent((yy << 4) | xx)) {
 
           l--;
           parent[parent[(y << 4) | x]] = parent[(yy << 4) | xx];
@@ -911,7 +911,7 @@ uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l){
 }
 
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
-  uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]){
+  uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]) {
   /* 255 == -1 because of the overflow */
   const uint8_t dx[] = {0, 1, 0, 255};
   const uint8_t dy[] = {255, 0, 1, 0};
@@ -922,13 +922,13 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
     };
   uint8_t yy, xx, i, d;
 
-  for(i = 0; i < 4; i++){
+  for(i = 0; i < 4; i++) {
     yy = y + CAVE_HEIGHT + dy[i];
     yy %= CAVE_HEIGHT;
     xx = x + CAVE_WIDTH + dx[i];
     xx %= CAVE_WIDTH;
     d = i;
-    while(map[yy][xx] >= CORRIDOR){
+    while (map[yy][xx] >= CORRIDOR) {
       /* No += and no % on the same line,
        * weirdest casting related bugs. */
       d = cor[map[yy][xx] - CORRIDOR][d];
@@ -938,15 +938,15 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
       xx %= CAVE_WIDTH;
     }
 
-    if(map[yy][xx] < BOTH_ROOM){
+    if (map[yy][xx] < BOTH_ROOM) {
       map[yy][xx] |= f;
-      if(dist > 1)
+      if (dist > 1)
         flagAround(yy, xx, f, dist - 1, map);
     }
   }
 }
 
-void monster(){
+void monster() {
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
   const char *rooms[] = {clearRoomMap,
     redRoomMap,
@@ -984,12 +984,12 @@ void monster(){
   /* Corridors */
   n = (random() % 31) + 60;
   l = CAVE_WIDTH * CAVE_HEIGHT;
-  for(i = 0; i < n; i++){
+  for(i = 0; i < n; i++) {
     /* Remove the t-th clean room */
     t = random() % l;
-    for(y = 0; y < CAVE_HEIGHT; y++){
-      for(x = 0; x < CAVE_WIDTH; x++){
-        if(!map[y][x] && !(t--)) goto tth_found;
+    for(y = 0; y < CAVE_HEIGHT; y++) {
+      for(x = 0; x < CAVE_WIDTH; x++) {
+        if (!map[y][x] && !(t--)) goto tth_found;
       }
     }
     tth_found:
@@ -999,12 +999,12 @@ void monster(){
 
   /* Holes */
   n = (random() % 8) + 1;
-  for(i = 0; i < n; i++){
+  for(i = 0; i < n; i++) {
     /* Make the t-th clean room a hole */
     t = random() % l;
-    for(y = 0; y < CAVE_HEIGHT; y++){
-      for(x = 0; x < CAVE_WIDTH; x++){
-        if(map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_hole;
+    for(y = 0; y < CAVE_HEIGHT; y++) {
+      for(x = 0; x < CAVE_WIDTH; x++) {
+        if (map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_hole;
       }
     }
     tth_found_hole:
@@ -1016,9 +1016,9 @@ void monster(){
 
   /* Wumpus */
   t = random() % l;
-  for(y = 0; y < CAVE_HEIGHT; y++){
-    for(x = 0; x < CAVE_WIDTH; x++){
-      if(map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_wumpus;
+  for(y = 0; y < CAVE_HEIGHT; y++) {
+    for(x = 0; x < CAVE_WIDTH; x++) {
+      if (map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_wumpus;
     }
   }
   tth_found_wumpus:
@@ -1030,15 +1030,15 @@ void monster(){
 
   /* Guy */
   i = 0;
-  for(y = 0; y < CAVE_HEIGHT; y++){
-    for(x = 0; x < CAVE_WIDTH; x++){
-      if(!map[y][x]) i++;
+  for(y = 0; y < CAVE_HEIGHT; y++) {
+    for(x = 0; x < CAVE_WIDTH; x++) {
+      if (!map[y][x]) i++;
     }
   }
   t = random() % i;
-  for(y = 0; y < CAVE_HEIGHT; y++){
-    for(x = 0; x < CAVE_WIDTH; x++){
-      if(!map[y][x] && !(t--)) goto tth_found_guy;
+  for(y = 0; y < CAVE_HEIGHT; y++) {
+    for(x = 0; x < CAVE_WIDTH; x++) {
+      if (!map[y][x] && !(t--)) goto tth_found_guy;
     }
   }
   /* This shouldn't happen, but just in case there are no clean rooms */
@@ -1046,7 +1046,7 @@ void monster(){
   tth_found_guy:
 
   /* Only accept connected graphs */
-  if(!checkConnectivity(map, l)) goto generate_cave;
+  if (!checkConnectivity(map, l)) goto generate_cave;
 
   /* If the highest bit is set, the room is visible */
   map[y][x] |= 0x80;
@@ -1054,11 +1054,11 @@ void monster(){
   /* Process input */
   l = 0;
   ClearVram();
-  while(1){
+  while (1) {
     /* Redraw */
-    for(i = 0; i < CAVE_HEIGHT; i++){
-      for(n = 0; n < CAVE_WIDTH; n++){
-        if(map[i][n] & 0x80){
+    for(i = 0; i < CAVE_HEIGHT; i++) {
+      for(n = 0; n < CAVE_WIDTH; n++) {
+        if (map[i][n] & 0x80) {
           DrawMap2(3 + (n << 1),
             4 + (i << 1),
             rooms[(i == y && x == n? 8 : 0) +
@@ -1068,7 +1068,7 @@ void monster(){
     }
 
     /* Draw the targets if shooting */
-    for(i = 0; l && i < 4; i++){
+    for(i = 0; l && i < 4; i++) {
       yy = y + CAVE_HEIGHT + dy[i];
       yy %= CAVE_HEIGHT;
       xx = x + CAVE_WIDTH + dx[i];
@@ -1079,37 +1079,37 @@ void monster(){
         targetMap);
     }
     /* End game */
-    if((map[y][x] & 0x7f) >= WUMPUS_ROOM) break;
+    if ((map[y][x] & 0x7f) >= WUMPUS_ROOM) break;
 
     controllerStart();
     d = 0xff;
 
-    if(pressed[0] & BTN_UP){
+    if (pressed[0] & BTN_UP) {
       d = 0;
     }
-    else if(pressed[0] & BTN_RIGHT){
+    else if (pressed[0] & BTN_RIGHT) {
       d = 1;
     }
-    else if(pressed[0] & BTN_DOWN){
+    else if (pressed[0] & BTN_DOWN) {
       d = 2;
     }
-    else if(pressed[0] & BTN_LEFT){
+    else if (pressed[0] & BTN_LEFT) {
       d = 3;
     }
-    else if(pressed[i] & BTN_A && !l){
+    else if (pressed[i] & BTN_A && !l) {
       l = 1;
     }
-    else if(pressed[i] & BTN_B && l){
+    else if (pressed[i] & BTN_B && l) {
       ClearVram();
       l = 0;
     }
-    else if(pressed[0] & BTN_SELECT){
+    else if (pressed[0] & BTN_SELECT) {
       controllerEnd();
       return;
     }
 
     /* Moving */
-    if(d != 0xff){
+    if (d != 0xff) {
       yy = y;
       xx = x;
 
@@ -1117,7 +1117,7 @@ void monster(){
       y %= CAVE_HEIGHT;
       x = x + CAVE_WIDTH + dx[d];
       x %= CAVE_WIDTH;
-      while((map[y][x] & 0x7f) >= CORRIDOR){
+      while ((map[y][x] & 0x7f) >= CORRIDOR) {
         map[y][x] |= 0x80;
         /* No += and no % on the same line,
          * weirdest casting related bugs. */
@@ -1129,8 +1129,8 @@ void monster(){
       }
       map[y][x] |= 0x80;
       /* Shooting */
-      if(l){
-        if((map[y][x] & 0x7f) != WUMPUS_ROOM){
+      if (l) {
+        if ((map[y][x] & 0x7f) != WUMPUS_ROOM) {
           y = wy;
           x = wx;
         }
@@ -1148,7 +1148,7 @@ void monster(){
   }
 
   /* Print the result */
-  switch(map[y][x] & 0x7f){
+  switch(map[y][x] & 0x7f) {
     case WUMPUS_ROOM:
       Print(6, 14, strAte);
       break;
@@ -1161,17 +1161,17 @@ void monster(){
       Print(8, 6, strCongratulations);
       Print(4, 14, strKill);
   }
-  while(1){
+  while (1) {
     controllerStart();
-    if(pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START) break;
     WaitVsync(1);
     controllerEnd();
   }
   controllerEnd();
 
   /* Draw the hole cave */
-  for(i = 0; i < CAVE_HEIGHT; i++){
-    for(n = 0; n < CAVE_WIDTH; n++){
+  for(i = 0; i < CAVE_HEIGHT; i++) {
+    for(n = 0; n < CAVE_WIDTH; n++) {
       DrawMap2(3 + (n << 1),
         4 + (i << 1),
         rooms[(i == y && x == n? 8 : 0) +
@@ -1179,24 +1179,24 @@ void monster(){
     }
   }
 
-  while(1){
+  while (1) {
     controllerStart();
-    if(pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START) break;
     WaitVsync(1);
     controllerEnd();
   }
   controllerEnd();
 }
 
-uint8_t testArray(uint8_t *m){
+uint8_t testArray(uint8_t *m) {
   int i;
-  for(i = 1; i < 16; i++){
-    if(m[i] < m[i - 1]) return 0;
+  for(i = 1; i < 16; i++) {
+    if (m[i] < m[i - 1]) return 0;
   }
   return 1;
 }
 
-void rain(uint8_t human){
+void rain(uint8_t human) {
   int8_t l[2] = {16, 16};
   uint8_t i, n, s = 0;
   /* Movement delay, shot delay, next movement, next shot */
@@ -1211,32 +1211,32 @@ void rain(uint8_t human){
   ClearVram();
   Fill(0, 5, 30, 19, SKY_TILE);
   Fill(14, 0, 2, 28, PAINTED_TILE);
-  for(i = 0; i <= human; i++){
-    for(n = 0; n < 10; n++){
+  for(i = 0; i <= human; i++) {
+    for(n = 0; n < 10; n++) {
       DrawMap2(3 + n + (15 * i), 6, canonMap);
       SetTile(3 + n + (15 * i), 24, CRACK_TILE);
     }
     Print(3 + 15 * i, 4, strLives);
     printColoredByte2(11 + (15 * i) , 4, l[i], GREEN_NUMBER);
   }
-  if(!human){
+  if (!human) {
     Print(18, 4, strScore);
     printColoredByte2(26 , 4, s, GREEN_NUMBER);
   }
 
   /* Process the input */
-  while(l[0] || l[2]){
+  while (l[0] || l[2]) {
     controllerStart();
 
     /* Destroy falling numbers */
-    for(i = 0; i <= human; i++){
-      for(n = 0; n < 12; n++){
-        if(n == 2 || n == 3) continue;
-        if(pressed[i] & (1 << n)){
+    for(i = 0; i <= human; i++) {
+      for(n = 0; n < 12; n++) {
+        if (n == 2 || n == 3) continue;
+        if (pressed[i] & (1 << n)) {
         }
       }
     }
-    if(pressed[0] & BTN_SELECT){
+    if (pressed[0] & BTN_SELECT) {
       controllerEnd();
       return;
     }
@@ -1247,14 +1247,14 @@ void rain(uint8_t human){
 
   ClearVram();
   /* One player, game over */
-  if(!human){
+  if (!human) {
     Print(10, 10, strGameOver);
     Print(10, 12, strScore);
     printColoredByte2(18, 12, s, GREEN_NUMBER);
   }
   /* Announce the winner. */
   else {
-    if(l[0] == l[1]){
+    if (l[0] == l[1]) {
       Print(12, 12, strDraw);
     }
     else {
@@ -1263,24 +1263,24 @@ void rain(uint8_t human){
     }
   }
 
-  while(1){
+  while (1) {
     controllerStart();
-    if(pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START) break;
     WaitVsync(1);
     controllerEnd();
   }
   controllerEnd();
 }
 
-void sort(uint8_t human){
+void sort(uint8_t human) {
   uint8_t m[2][16], i, n, p[2], s[2], d;
 
   /* Generate a random order */
   for(i = 0; i < 16; i++) m[0][i] = i;
-  while(testArray(m[0])){
-    for(i = 0; i < 16; i++){
+  while (testArray(m[0])) {
+    for(i = 0; i < 16; i++) {
       n = (random() % (16 - i)) + i;
-      if(n != i){
+      if (n != i) {
         m[0][n] ^= m[0][i];
         m[0][i] ^= m[0][n];
         m[0][n] ^= m[0][i];
@@ -1295,7 +1295,7 @@ void sort(uint8_t human){
   ClearVram();
   Print(10, 6, strPlayer1);
   Print(10, 14, strPlayer2);
-  for(i = 0; i < 8; i++){
+  for(i = 0; i < 8; i++) {
     printColoredByte2(3 * i + 4,
       8, m[0][i],
       (i? WHITE_NUMBER : BLUE_NUMBER));
@@ -1315,25 +1315,25 @@ void sort(uint8_t human){
   d = CPU_DELAY;
 
   /* Process input */
-  while(1){
+  while (1) {
     controllerStart();
 
-    for(i = 0; i < 2; i++){
+    for(i = 0; i < 2; i++) {
       n = p[i];
-      if(!i || human){
-        if(pressed[i] & BTN_RIGHT){
+      if (!i || human) {
+        if (pressed[i] & BTN_RIGHT) {
           sort_press_right:
           n = (p[i] + 1) & 0xf;
-          if(n == s[i]) n = (n + 1) & 0xf;
+          if (n == s[i]) n = (n + 1) & 0xf;
         }
-        else if(pressed[i] & BTN_LEFT){
+        else if (pressed[i] & BTN_LEFT) {
           sort_press_left:
           n = (p[i] + 15) & 0xf;
-          if(n == s[i]) n = (n + 15) & 0xf;
+          if (n == s[i]) n = (n + 15) & 0xf;
         }
-        else if(pressed[i] & BTN_A){
+        else if (pressed[i] & BTN_A) {
           sort_select:
-          if(s[i] == 0xff){
+          if (s[i] == 0xff) {
             printColoredByte2(3 * (p[i] & 7) + 4,
               (p[i] < 8? 8 : 10) + (i? 8 : 0),
               m[i][p[i]], GREEN_NUMBER);
@@ -1354,26 +1354,26 @@ void sort(uint8_t human){
 
             s[i] = 0xff;
 
-            if(testArray(m[i])){
+            if (testArray(m[i])) {
               controllerEnd();
               goto endSort;
             }
           }
         }
-        else if(pressed[i] & BTN_B && s[i] != 0xff){
+        else if (pressed[i] & BTN_B && s[i] != 0xff) {
           printColoredByte2(3 * (s[i] & 7) + 4,
             (s[i] < 8? 8 : 10) + (i? 8 : 0),
             m[i][s[i]], WHITE_NUMBER);
 
           s[i] = 0xff;
         }
-        else if(!i && pressed[i] & BTN_SELECT){
+        else if (!i && pressed[i] & BTN_SELECT) {
           controllerEnd();
           return;
         }
       }
       /* AI */
-      else if(d){
+      else if (d) {
         /* Delay the movements */
         d--;
       }
@@ -1381,17 +1381,17 @@ void sort(uint8_t human){
         d = CPU_DELAY;
 
         /* Select a number in the wrong position */
-        if(s[i] == 0xff){
-          if(m[i][p[i]] == p[i])
+        if (s[i] == 0xff) {
+          if (m[i][p[i]] == p[i])
             goto sort_press_right;
           else
             goto sort_select;
         }
         /* Put it in the right place */
         else {
-          if(m[i][s[i]] != p[i])
-            if((p[i] > m[i][s[i]] && p[i] - m[i][s[i]] < 8) ||
-              (p[i] < m[i][s[i]] && m[i][s[i]] - p[i] > 8)){
+          if (m[i][s[i]] != p[i])
+            if ((p[i] > m[i][s[i]] && p[i] - m[i][s[i]] < 8) ||
+              (p[i] < m[i][s[i]] && m[i][s[i]] - p[i] > 8)) {
 
               goto sort_press_left;
             }
@@ -1420,16 +1420,16 @@ void sort(uint8_t human){
 
   Print(8, 14, strWins);
   SetTile(15, 14, WHITE_NUMBER + 1 + testArray(m[1]));
-  while(1){
+  while (1) {
     controllerStart();
-    if(pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START) break;
     WaitVsync(1);
     controllerEnd();
   }
   controllerEnd();
 }
 
-uint16_t topmenu(){
+uint16_t topmenu() {
   uint16_t base = 0;
   uint16_t t;
   uint8_t i;
@@ -1441,7 +1441,7 @@ uint16_t topmenu(){
   DrawMap2(1, 2, titleMap);
 
   /* Print the list */
-  for(i = 0; i < 16; i++){
+  for(i = 0; i < 16; i++) {
     t = base + (uint16_t) i;
 
     /* To always generate the same names */
@@ -1458,11 +1458,11 @@ uint16_t topmenu(){
   i = (goingUp? 15 : 0);
   SetTile(3, 8 + i, ARROW_TILE);
 
-  while(1){
+  while (1) {
     controllerStart();
 
-    if(pressed[0] & BTN_DOWN){
-      if(i < 15){
+    if (pressed[0] & BTN_DOWN) {
+      if (i < 15) {
         SetTile(3, 8 + i++, 0);
         SetTile(3, 8 + i, ARROW_TILE);
       }
@@ -1473,8 +1473,8 @@ uint16_t topmenu(){
         goto draw_page;
       }
     }
-    else if(pressed[0] & BTN_UP){
-      if(i){
+    else if (pressed[0] & BTN_UP) {
+      if (i) {
         SetTile(3, 8 + i--, 0);
         SetTile(3, 8 + i, ARROW_TILE);
       }
@@ -1485,20 +1485,20 @@ uint16_t topmenu(){
         goto draw_page;
       }
     }
-    else if(pressed[0] & BTN_RIGHT){
+    else if (pressed[0] & BTN_RIGHT) {
         base += 16;
         goingUp = 0;
         controllerEnd();
         goto draw_page;
     }
-    else if(pressed[0] & BTN_LEFT){
+    else if (pressed[0] & BTN_LEFT) {
         base -= 16;
         goingUp = 0;
         controllerEnd();
         goto draw_page;
     }
     /* To properly read the controller */
-    else if(pressed[0] & BTN_START){
+    else if (pressed[0] & BTN_START) {
       controllerEnd();
       break;
     }
@@ -1510,7 +1510,7 @@ uint16_t topmenu(){
   return (base + (uint16_t) i);
 }
 
-int main(){
+int main() {
   uint16_t ret;
   uint32_t r;
   uint8_t i;
@@ -1520,14 +1520,14 @@ int main(){
   SetFontTilesIndex(0);
   /* SetSpritesTileTable(sprite); */
 
-  while(1){
+  while (1) {
     beginning:
     ret = topmenu();
 
-    switch(ret % 10){
+    switch(ret % 10) {
       case 0:
         /* Greed */
-        while(1){
+        while (1) {
           /* Draw the menu */
           ClearVram();
           DrawMap2(9, 7, (const char *) pgm_read_word(batteries +
@@ -1549,22 +1549,22 @@ int main(){
 
           i = 0;
           r = 0;
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_DOWN){
+            if (pressed[0] & BTN_DOWN) {
               SetTile(10, 15 + i, 0);
               i = (i + 1) % 3;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_UP){
+            else if (pressed[0] & BTN_UP) {
               SetTile(10, 15 + i, 0);
               i = (6 + i - 1) % 3;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_START){
+            else if (pressed[0] & BTN_START) {
               controllerEnd();
-              if(i == 2){
+              if (i == 2) {
                 goto beginning;
               }
               srandom(r);
@@ -1581,7 +1581,7 @@ int main(){
 
       case 3:
         /* Slide */
-        while(1){
+        while (1) {
           /* Draw the menu */
           ClearVram();
           Print((((ret % 30) / 10) == 2? 10 : 13), 5,
@@ -1596,22 +1596,22 @@ int main(){
 
           i = 0;
           r = 0;
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_DOWN){
+            if (pressed[0] & BTN_DOWN) {
               SetTile(10, 15 + i, 0);
               i = (i + 1) & 1;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_UP){
+            else if (pressed[0] & BTN_UP) {
               SetTile(10, 15 + i, 0);
               i = (6 + i - 1) & 1;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_START){
+            else if (pressed[0] & BTN_START) {
               controllerEnd();
-              if(i){
+              if (i) {
                 goto beginning;
               }
               srandom(r);
@@ -1628,7 +1628,7 @@ int main(){
 
       case 5:
         /* Monster */
-        while(1){
+        while (1) {
           /* Draw the menu */
           ClearVram();
           Print((((ret % 30) / 10) == 2? 13 : 12), 5,
@@ -1652,22 +1652,22 @@ int main(){
 
           i = 0;
           r = 0;
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_DOWN){
+            if (pressed[0] & BTN_DOWN) {
               SetTile(10, 15 + i, 0);
               i = (i + 1) & 1;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_UP){
+            else if (pressed[0] & BTN_UP) {
               SetTile(10, 15 + i, 0);
               i = (6 + i - 1) & 1;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_START){
+            else if (pressed[0] & BTN_START) {
               controllerEnd();
-              if(i){
+              if (i) {
                 goto beginning;
               }
               srandom(r);
@@ -1684,7 +1684,7 @@ int main(){
 
       case 7:
         /* Rain */
-        while(1){
+        while (1) {
           /* Draw the menu */
           ClearVram();
           Print((((ret % 30) / 10) == 2? 10 : 13), 5,
@@ -1700,22 +1700,22 @@ int main(){
 
           i = 0;
           r = 0;
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_DOWN){
+            if (pressed[0] & BTN_DOWN) {
               SetTile(10, 15 + i, 0);
               i = (i + 1) % 3;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_UP){
+            else if (pressed[0] & BTN_UP) {
               SetTile(10, 15 + i, 0);
               i = (6 + i - 1) % 3;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_START){
+            else if (pressed[0] & BTN_START) {
               controllerEnd();
-              if(i == 2){
+              if (i == 2) {
                 goto beginning;
               }
               srandom(r);
@@ -1733,7 +1733,7 @@ int main(){
 
       case 8:
         /* Array */
-        while(1){
+        while (1) {
           /* Draw the menu */
           ClearVram();
           Print((((ret % 30) / 10) == 2? 10 : 13), 5,
@@ -1749,22 +1749,22 @@ int main(){
 
           i = 0;
           r = 0;
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_DOWN){
+            if (pressed[0] & BTN_DOWN) {
               SetTile(10, 15 + i, 0);
               i = (i + 1) % 3;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_UP){
+            else if (pressed[0] & BTN_UP) {
               SetTile(10, 15 + i, 0);
               i = (6 + i - 1) % 3;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_START){
+            else if (pressed[0] & BTN_START) {
               controllerEnd();
-              if(i == 2){
+              if (i == 2) {
                 goto beginning;
               }
               srandom(r);
@@ -1782,7 +1782,7 @@ int main(){
 
       case 9:
         /* Rich */
-        while(1){
+        while (1) {
           /* Draw the menu */
           ClearVram();
           DrawMap2(14, 7, openChestMap);
@@ -1798,22 +1798,22 @@ int main(){
 
           i = 0;
           r = 0;
-          while(1){
+          while (1) {
             controllerStart();
 
-            if(pressed[0] & BTN_DOWN){
+            if (pressed[0] & BTN_DOWN) {
               SetTile(10, 15 + i, 0);
               i = (i + 1) % 2;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_UP){
+            else if (pressed[0] & BTN_UP) {
               SetTile(10, 15 + i, 0);
               i = (6 + i - 1) % 2;
               SetTile(10, 15 + i, ARROW_TILE);
             }
-            else if(pressed[0] & BTN_START){
+            else if (pressed[0] & BTN_START) {
               controllerEnd();
-              if(i){
+              if (i) {
                 goto beginning;
               }
               srandom(r);
