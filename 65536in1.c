@@ -101,8 +101,7 @@ const char strInsideDef[] PROGMEM = "WAS INSIDE CHEST";
 const char strCongrat[] PROGMEM = "CONGRATULATIONS";
 const char strPlayer1[] PROGMEM = "PLAYER 1:";
 const char strPlayer2[] PROGMEM = "PLAYER 2:";
-const char strGenerating[] PROGMEM = "GENERATING A";
-const char strGraph[] PROGMEM = "CONNECTED PLANAR GRAPH";
+const char strGenerating[] PROGMEM = "GENERATING LEVEL";
 const char strWait[] PROGMEM = "PLEASE WAIT";
 const char strAte[] PROGMEM = "THE WUMPUS ATE YOU";
 const char strFell[] PROGMEM = "YOU FELL IN A HOLE";
@@ -987,8 +986,7 @@ void monster() {
 
   /* Print loading screen */
   ClearVram();
-  Print(9, 9, strGenerating);
-  Print(4, 10, strGraph);
+  Print(7, 9, strGenerating);
   Print(9, 14, strWait);
 
   /* Generate a map */
