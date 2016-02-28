@@ -9,7 +9,7 @@ INFO=../gameinfo.properties
 ## Kernel settings
 KERNEL_DIR=../../uzebox/kernel
 KERNEL_OPTIONS =-DVIDEO_MODE=3 -DINTRO_LOGO=0 -DSOUND_CHANNEL_4_ENABLE=0 -DSCROLLING=0
-KERNEL_OPTIONS+=-DMAX_SPRITES=0 -DRAM_TILES_COUNT=10
+KERNEL_OPTIONS+=-DMAX_SPRITES=0 -DRAM_TILES_COUNT=0
 
 ## Options common to compile, link and assembly rules
 COMMON=-mmcu=$(MCU)
