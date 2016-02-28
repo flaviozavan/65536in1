@@ -1305,7 +1305,7 @@ void rain(uint8_t players) {
         l[i] -= rainMoveDown(i);
 
       if (!(--nextShot)) {
-        uint8_t nextKey = rand() % 10;
+        uint8_t nextKey = random() % 10;
         for (i = 0; i < players; i++) {
           rainShoot(i, nextKey);
           falling[i][nextKey]++;
