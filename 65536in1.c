@@ -997,6 +997,7 @@ void monster() {
   Print(9, 14, strWait);
 
   /* Generate a map */
+  DisableSoundEngine();
   generate_cave:
   memset(map, 0, sizeof(map));
   /* Corridors */
@@ -1066,6 +1067,7 @@ void monster() {
   /* Only accept connected graphs */
   if (!checkConnectivity(map, parent)) goto generate_cave;
 
+  EnableSoundEngine();
   /* If the highest bit is set, the room is visible */
   map[y][x] |= 0x80;
 
