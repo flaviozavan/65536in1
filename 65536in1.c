@@ -752,7 +752,7 @@ void switchSlide(uint8_t p, uint8_t o, uint8_t *m) {
   DrawMap2((p & 3) * 6 + 3, (p >> 2) * 5 + 4, boxMap);
   printColoredByte2((p & 3) * 6 + 6,
     (p >> 2) * 5 + 6, m[p],
-    WHITE_NUMBER);
+    m[p] == p? GREEN_NUMBER : WHITE_NUMBER);
 
   Fill((o & 3) * 6 + 3, (o >> 2) * 5 + 4, 6, 5, 0);
 }
@@ -787,7 +787,7 @@ void slide() {
     DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4, boxMap);
     printColoredByte2((i & 3) * 6 + 6,
       (i >> 2) * 5 + 6, m[i],
-      WHITE_NUMBER);
+      m[i] == i? GREEN_NUMBER : WHITE_NUMBER);
   }
 
   /* Process the input */
