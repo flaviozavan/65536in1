@@ -118,6 +118,24 @@ const char * const batteries[] PROGMEM = {
   battery3Map,
   battery4Map
 };
+const char * const monsterRooms[] PROGMEM = {
+  clearRoomMap,
+  redRoomMap,
+  greenRoomMap,
+  bothRoomMap,
+  wumpusMap,
+  holeMap,
+  corridor1Map,
+  corridor2Map,
+  guyMap,
+  redGuyMap,
+  greenGuyMap,
+  bothGuyMap,
+  wumpusMap,
+  holeMap,
+  corridor1Map,
+  corridor2Map
+};
 
 const uint32_t prizes[] PROGMEM = {
   50, 100, 500, 1000, 2500, 5000, 7500, 10000, 20000, 30000, 40000, 50000,
@@ -131,9 +149,6 @@ uint16_t held[2] = {0, 0},
   pressed[2] = {0, 0},
   released[2] = {0, 0},
   prev[2] = {0, 0};
-/* Monster's */
-uint8_t parent[CAVE_HEIGHT * CAVE_WIDTH];
-uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
 
 inline void controllerStart();
 inline void controllerEnd();
@@ -148,8 +163,8 @@ void rich();
 uint8_t testSlide(uint8_t *m);
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m);
 void slide();
-uint8_t getParent(uint8_t v);
-uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l);
+uint8_t getParent(uint8_t v, uint8_t *parent);
+uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
 void monster();
@@ -851,12 +866,10 @@ void slide() {
 }
 
 /* No memory for recursion */
-uint8_t getParent(uint8_t v) {
+uint8_t getParent(uint8_t v, uint8_t *parent) {
   uint8_t i, o;
 
   for (i = v; parent[i] != i; i = parent[i]);
-  o = parent[v];
-  parent[v] = i;
   for (; parent[v] != v; v = o) {
     o = parent[v];
     parent[v] = i;
@@ -865,8 +878,11 @@ uint8_t getParent(uint8_t v) {
   return i;
 }
 
-uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l) {
+uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent) {
   uint8_t i, y, x, yy, xx, d;
+  uint8_t yxType, yyxxType;
+  uint8_t visited = 0;
+  uint8_t unions = 1;
   /* 255 == -1 because of the overflow */
   const uint8_t dx[] = {0, 1, 0, 255};
   const uint8_t dy[] = {255, 0, 1, 0};
@@ -879,47 +895,54 @@ uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l) {
   /* Parent array for the union find structure */
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      parent[(y << 4) | x] = (y << 4) | x;
+      parent[(y<<4)|x] = (y<<4)|x;
     }
   }
 
   /* Union all the edges */
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (map[y][x] == HOLE_ROOM) continue;
+      /* Using 0x80 to signal it being visited */
+      yxType = map[y][x] & (~0x80);
+      if (yxType == HOLE_ROOM || yxType >= CORRIDOR)
+        continue;
+      map[y][x] |= 0x80;
       for (i = 0; i < 4; i++) {
-        yy = y + CAVE_HEIGHT + dy[i];
-        yy %= CAVE_HEIGHT;
-        xx = x + CAVE_WIDTH + dx[i];
-        xx %= CAVE_WIDTH;
         d = i;
-        while (map[yy][xx] >= CORRIDOR) {
-          /* No += and no % on the same line,
-           * weirdest casting related bugs. */
-          d = cor[map[yy][xx] - CORRIDOR][d];
+        xx = x;
+        yy = y;
+        do {
           yy = yy + CAVE_HEIGHT + dy[d];
           yy %= CAVE_HEIGHT;
           xx = xx + CAVE_WIDTH + dx[d];
           xx %= CAVE_WIDTH;
+          yyxxType = map[yy][xx] & (~0x80);
+          map[yy][xx] |= 0x80;
+          if (yyxxType >= CORRIDOR)
+            d = cor[yyxxType-CORRIDOR][d];
+        } while(yyxxType >= CORRIDOR);
 
-          /* Detect and reject corridor loops */
-          if (yy == y && xx == x && map[y][x] >= CORRIDOR)
-            return 0;
-        }
-
-        /* Don't union holes or corridors */
-        if (map[y][x] < CORRIDOR &&
-          map[yy][xx] != HOLE_ROOM &&
-          getParent((y << 4) | x) != getParent((yy << 4) | xx)) {
-
-          l--;
-          parent[parent[(y << 4) | x]] = parent[(yy << 4) | xx];
+        /* Don't union holes */
+        if (yyxxType != HOLE_ROOM
+            && getParent((y<<4)|x, parent) != getParent((yy<<4)|xx, parent)) {
+          parent[parent[(y<<4)|x]] = parent[(yy<<4)|xx];
+          unions++;
         }
       }
     }
   }
 
-  return (l == 1);
+  for (y = 0; y < CAVE_HEIGHT; y++) {
+    for (x = 0; x < CAVE_WIDTH; x++) {
+      if (map[y][x] & 0x80)
+        visited++;
+      map[y][x] &= ~0x80;
+      if (map[y][x] != HOLE_ROOM && map[y][x] < CORRIDOR)
+        unions--;
+    }
+  }
+
+  return (visited == CAVE_HEIGHT*CAVE_WIDTH && !unions);
 }
 
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
@@ -941,8 +964,6 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
     xx %= CAVE_WIDTH;
     d = i;
     while (map[yy][xx] >= CORRIDOR) {
-      /* No += and no % on the same line,
-       * weirdest casting related bugs. */
       d = cor[map[yy][xx] - CORRIDOR][d];
       yy = yy + CAVE_HEIGHT + dy[d];
       yy %= CAVE_HEIGHT;
@@ -959,23 +980,9 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 }
 
 void monster() {
+  uint8_t parent[CAVE_HEIGHT * 16];
+  uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
-  const char *rooms[] = {clearRoomMap,
-    redRoomMap,
-    greenRoomMap,
-    bothRoomMap,
-    wumpusMap,
-    holeMap,
-    corridor1Map,
-    corridor2Map,
-    guyMap,
-    redGuyMap,
-    greenGuyMap,
-    bothGuyMap,
-    wumpusMap,
-    holeMap,
-    corridor1Map,
-    corridor2Map};
   const uint8_t dx[] = {0, 1, 0, 255};
   const uint8_t dy[] = {255, 0, 1, 0};
   const uint8_t cor[2][4] =
@@ -1057,7 +1064,7 @@ void monster() {
   tth_found_guy:
 
   /* Only accept connected graphs */
-  if (!checkConnectivity(map, l)) goto generate_cave;
+  if (!checkConnectivity(map, parent)) goto generate_cave;
 
   /* If the highest bit is set, the room is visible */
   map[y][x] |= 0x80;
@@ -1072,8 +1079,8 @@ void monster() {
         if (map[i][n] & 0x80) {
           DrawMap2(3 + (n << 1),
             4 + (i << 1),
-            rooms[(i == y && x == n? 8 : 0) +
-            (map[i][n] & 0x7f)]);
+            (const char*) pgm_read_word(monsterRooms
+              + (i == y && x == n? 8 : 0) + (map[i][n] & 0x7f)));
         }
       }
     }
@@ -1175,13 +1182,13 @@ void monster() {
   }
   controllerEnd();
 
-  /* Draw the hole cave */
+  /* Draw the whole cave */
   for (i = 0; i < CAVE_HEIGHT; i++) {
     for (n = 0; n < CAVE_WIDTH; n++) {
       DrawMap2(3 + (n << 1),
         4 + (i << 1),
-        rooms[(i == y && x == n? 8 : 0) +
-        (map[i][n] & 0x7f)]);
+        (const char*) pgm_read_word(monsterRooms
+          + (i == y && x == n? 8 : 0) + (map[i][n] & 0x7f)));
     }
   }
 
