@@ -10,6 +10,7 @@
 #define PERIOD_TILE 14
 #define SKY_TILE 0xbb
 #define HIT_TILE 0xbd
+#define NON_FIRE_TILE 0xbe
 #define FIRE_TILE 0xbf
 #define CRACK_TILE 0xc0
 #define WHITE_NUMBER 16
@@ -25,7 +26,8 @@
 #define CAVE_WIDTH 12
 #define CAVE_HEIGHT 10
 #define MOVE_DELAY 20
-#define SHOT_DELAY 60
+#define SHOT_DELAY 6
+#define FASTER_DELAY 6
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -124,6 +126,7 @@ const uint32_t prizes[] PROGMEM = {
   20000000, 30000000, 40000000, 50000000, 75000000, 100000000
 };
 
+extern uint8_t vram[];
 /* Controller Handling */
 uint16_t held[2] = {0, 0},
   pressed[2] = {0, 0},
@@ -137,8 +140,11 @@ inline void controllerStart();
 inline void controllerEnd();
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
+void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
 void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base);
 void greed(uint8_t human);
+uint8_t rainMoveDown(uint8_t player);
+void rainShoot(uint8_t player, uint8_t key);
 void rich();
 uint8_t testSlide(uint8_t *m);
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m);
@@ -185,6 +191,13 @@ void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base) {
 
   byte /= 10;
   SetTile(x--, y, base + (byte % 10));
+}
+
+void printColoredShort(uint8_t x, uint8_t y, uint16_t s, uint8_t base) {
+  do {
+    SetTile(x--, y, base + (s % 10));
+    s /= 10;
+  } while (s);
 }
 
 void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base) {
@@ -1191,46 +1204,140 @@ uint8_t testArray(uint8_t *m) {
   return 1;
 }
 
-void rain(uint8_t human) {
-  int8_t l[2] = {16, 16};
-  uint8_t i, n, s = 0;
-  /* Movement delay, shot delay, next movement, next shot */
-  uint8_t md = MOVE_DELAY, sd = SHOT_DELAY, nm = md, ns = 120;
-  uint8_t canons[20], ground[20];
-  const uint8_t bitt[12] = {0, 1, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9};
+uint8_t rainMoveDown(uint8_t player) {
+  const uint8_t yOffset = 8;
+  const uint8_t xOffset = player? 18 : 3;
+  uint8_t *vRow = vram + ((yOffset+15)*VRAM_TILES_H) + xOffset;
+  uint8_t *vTopRow = vRow - VRAM_TILES_H;
+  uint8_t hits = 0;
 
-  memset(canons, 0, sizeof(canons));
-  memset(ground, 0, sizeof(ground));
+  for (uint8_t x = 0; x < 10; x++) {
+    if (vTopRow[x] == RAM_TILES_COUNT+SKY_TILE
+        || vTopRow[x] == RAM_TILES_COUNT+HIT_TILE) {
+      vRow[x] = RAM_TILES_COUNT + SKY_TILE;
+      vRow[x+VRAM_TILES_H] = RAM_TILES_COUNT;
+    }
+    else {
+      hits++;
+      vRow[x] = RAM_TILES_COUNT + HIT_TILE;
+      vRow[x+VRAM_TILES_H] = RAM_TILES_COUNT + CRACK_TILE;
+    }
+  }
+
+  Fill(xOffset, yOffset-1, 10, 1, NON_FIRE_TILE);
+
+  for (uint8_t y = yOffset+14; y > yOffset; y--) {
+    vRow = vTopRow;
+    vTopRow -= VRAM_TILES_H;
+    for (uint8_t x = 0; x < 10; x++)
+      vRow[x] = vTopRow[x] == RAM_TILES_COUNT + HIT_TILE?
+        RAM_TILES_COUNT + SKY_TILE : vTopRow[x];
+  }
+  Fill(xOffset, yOffset, 10, 1, SKY_TILE);
+
+  return hits;
+}
+
+void rainShoot(uint8_t player, uint8_t key) {
+  const char charMap[] = "<UD>ABXYLR";
+  const uint8_t yOffset = 8;
+  const uint8_t xOffset = player? 18 : 3;
+
+  SetTile(xOffset+key, yOffset-1, FIRE_TILE);
+  SetTile(xOffset+key, yOffset, charMap[key]-' ');
+}
+
+void rainRemove(uint8_t player, uint8_t key) {
+  const uint8_t yOffset = 8;
+  const uint8_t xOffset = player? 18 : 3;
+  uint8_t *vCell = vram + ((yOffset+14)*VRAM_TILES_H) + xOffset + key;
+
+  for (uint8_t y = yOffset+14; y >= yOffset; y--, vCell -= VRAM_TILES_H) {
+    if (*vCell != RAM_TILES_COUNT + SKY_TILE) {
+      *vCell = RAM_TILES_COUNT + HIT_TILE;
+      break;
+    }
+  }
+}
+
+void rain(uint8_t players) {
+  int8_t l[2] = {8, 8};
+  uint8_t i, j;
+  uint16_t score = 0;
+  uint8_t movementDelay = MOVE_DELAY;
+  uint8_t shotDelay = SHOT_DELAY;
+  uint8_t nextMovement = movementDelay;
+  uint8_t nextShot = 2*shotDelay;
+  uint8_t fasterDelay = FASTER_DELAY;
+  uint8_t nextFaster = fasterDelay;
+  uint8_t falling[2][10];
+  uint16_t buttonMap[10] = {BTN_LEFT, BTN_UP, BTN_DOWN, BTN_RIGHT, BTN_A,
+    BTN_B, BTN_X, BTN_Y, BTN_SL, BTN_SR};
+
+  memset(falling, 0, sizeof(falling));
 
   /* Draw the basic screen */
   ClearVram();
   Fill(0, 5, 30, 19, SKY_TILE);
   Fill(14, 0, 2, 28, PAINTED_TILE);
-  for (i = 0; i <= human; i++) {
-    for (n = 0; n < 10; n++) {
-      DrawMap2(3 + n + (15 * i), 6, canonMap);
-      SetTile(3 + n + (15 * i), 24, CRACK_TILE);
+  for (i = 0; i < players; i++) {
+    for (j = 0; j < 10; j++) {
+      DrawMap2(3 + j + (15 * i), 6, canonMap);
     }
     Print(3 + 15 * i, 4, strLives);
-    printColoredByte2(11 + (15 * i) , 4, l[i], GREEN_NUMBER);
   }
-  if (!human) {
+  if (players == 1) {
     Print(18, 4, strScore);
-    printColoredByte2(26 , 4, s, GREEN_NUMBER);
   }
 
-  /* Process the input */
-  while (l[0] || l[2]) {
+  while (l[0] && l[1]) {
     controllerStart();
 
-    /* Destroy falling numbers */
-    for (i = 0; i <= human; i++) {
-      for (n = 0; n < 12; n++) {
-        if (n == 2 || n == 3) continue;
-        if (pressed[i] & (1 << n)) {
+    if (!(--nextMovement)) {
+      for (i = 0; i < players; i++)
+        l[i] -= rainMoveDown(i);
+
+      if (!(--nextShot)) {
+        uint8_t nextKey = rand() % 10;
+        for (i = 0; i < players; i++) {
+          rainShoot(i, nextKey);
+          falling[i][nextKey]++;
+        }
+
+        if (!(--nextFaster)) {
+          nextFaster = fasterDelay;
+          if (movementDelay > 4)
+            movementDelay--;
+          else if (shotDelay > 2)
+            shotDelay--;
+        }
+
+        nextShot = shotDelay;
+      }
+
+      nextMovement = movementDelay;
+    }
+
+    for (i = 0; i < players; i++)
+      printColoredByte2(11 + (15 * i) , 4, l[i], GREEN_NUMBER);
+
+    /* Destroy falling buttons */
+    for (i = 0; i < players; i++) {
+      for (j = 0; j < 10; j++) {
+        if (pressed[i] & buttonMap[j]) {
+          if (falling[i][j]) {
+            rainRemove(i, j);
+            if (players == 1)
+              score++;
+          }
         }
       }
     }
+
+    if (players == 1) {
+      printColoredShort(27 , 4, score, GREEN_NUMBER);
+    }
+
     if (pressed[0] & BTN_SELECT) {
       controllerEnd();
       return;
@@ -1242,10 +1349,10 @@ void rain(uint8_t human) {
 
   ClearVram();
   /* One player, game over */
-  if (!human) {
+  if (players == 1) {
     Print(10, 10, strGameOver);
     Print(10, 12, strScore);
-    printColoredByte2(18, 12, s, GREEN_NUMBER);
+    printColoredByte2(18, 12, score, GREEN_NUMBER);
   }
   /* Announce the winner. */
   else {
@@ -1714,7 +1821,7 @@ int main() {
                 goto beginning;
               }
               srandom(r);
-              rain(i);
+              rain(i+1);
               break;
             }
 
