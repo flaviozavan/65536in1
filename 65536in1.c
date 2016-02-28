@@ -75,7 +75,7 @@ const char strVsHuman[] PROGMEM = "VS HUMAN";
 const char strExit[] PROGMEM = "EXIT";
 const char strCFlavio[] PROGMEM = "\\ 2012 FL^VIO ZAVAN";
 const char strLicense[] PROGMEM = "CODE LICENSED UNDER";
-const char strGPL[] PROGMEM = "THE GNU GPL V3";
+const char strMIT[] PROGMEM = "THE MIT LICENSE";
 const char strTurn[] PROGMEM = "PLAYER  'S TURN";
 const char strWins[] PROGMEM = "PLAYER   WINS";
 const char strStart[] PROGMEM = "START";
@@ -1545,7 +1545,7 @@ int main() {
           SetTile(10, 15, ARROW_TILE);
           Print(5, 21, strCFlavio);
           Print(5, 23, strLicense);
-          Print(7, 24, strGPL);
+          Print(7, 24, strMIT);
 
           i = 0;
           r = 0;
@@ -1592,7 +1592,7 @@ int main() {
           SetTile(10, 15, ARROW_TILE);
           Print(5, 21, strCFlavio);
           Print(5, 23, strLicense);
-          Print(7, 24, strGPL);
+          Print(7, 24, strMIT);
 
           i = 0;
           r = 0;
@@ -1648,7 +1648,7 @@ int main() {
           SetTile(10, 15, ARROW_TILE);
           Print(5, 21, strCFlavio);
           Print(5, 23, strLicense);
-          Print(7, 24, strGPL);
+          Print(7, 24, strMIT);
 
           i = 0;
           r = 0;
@@ -1696,7 +1696,7 @@ int main() {
           SetTile(10, 15, ARROW_TILE);
           Print(5, 21, strCFlavio);
           Print(5, 23, strLicense);
-          Print(7, 24, strGPL);
+          Print(7, 24, strMIT);
 
           i = 0;
           r = 0;
@@ -1745,7 +1745,7 @@ int main() {
           SetTile(10, 15, ARROW_TILE);
           Print(5, 21, strCFlavio);
           Print(5, 23, strLicense);
-          Print(7, 24, strGPL);
+          Print(7, 24, strMIT);
 
           i = 0;
           r = 0;
@@ -1794,7 +1794,7 @@ int main() {
           SetTile(10, 15, ARROW_TILE);
           Print(5, 21, strCFlavio);
           Print(5, 23, strLicense);
-          Print(7, 24, strGPL);
+          Print(7, 24, strMIT);
 
           i = 0;
           r = 0;
