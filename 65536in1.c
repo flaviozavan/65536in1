@@ -1096,12 +1096,9 @@ void monster() {
     else if (pressed[0] & BTN_LEFT) {
       d = 3;
     }
-    else if (pressed[i] & BTN_A && !l) {
-      l = 1;
-    }
-    else if (pressed[i] & BTN_B && l) {
+    else if (pressed[0] & BTN_A) {
+      l ^= 1;
       ClearVram();
-      l = 0;
     }
     else if (pressed[0] & BTN_SELECT) {
       controllerEnd();
@@ -1119,8 +1116,6 @@ void monster() {
       x %= CAVE_WIDTH;
       while ((map[y][x] & 0x7f) >= CORRIDOR) {
         map[y][x] |= 0x80;
-        /* No += and no % on the same line,
-         * weirdest casting related bugs. */
         d = cor[(map[y][x] & 0x7f) - CORRIDOR][d];
         y = y + CAVE_HEIGHT + dy[d];
         y %= CAVE_HEIGHT;
