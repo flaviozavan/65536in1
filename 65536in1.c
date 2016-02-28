@@ -214,10 +214,10 @@ void greed(uint8_t human) {
   ClearVram();
 
   /* Randomly generate a new game and draw on the screen */
-  for(i = 0; i < 5; i++) {
+  for (i = 0; i < 5; i++) {
     array[i] = (random() % 8) + 1;
     PrintByte(5 + 5 * i, 24, array[i], 0);
-    for(n = 0; n < array[i]; n++) {
+    for (n = 0; n < array[i]; n++) {
       DrawMap2(3 + 5 * i, 21 - (n << 1),
         (const char *) pgm_read_word(batteries + i));
     }
@@ -275,7 +275,7 @@ void greed(uint8_t human) {
           printColoredByte(5 + 5 * w, 24, ++v, GREEN_NUMBER);
         }
         else if (pressed[t] & BTN_B) {
-          for(i = 0; i < array[w]; i++) {
+          for (i = 0; i < array[w]; i++) {
             DrawMap2(3 + 5 * w, 21 - (i << 1),
               (const char *) pgm_read_word(batteries + w));
           }
@@ -294,7 +294,7 @@ void greed(uint8_t human) {
           SetTile(15, 4, WHITE_NUMBER + 1 + t);
 
           /* Check for victory */
-          for(i = 0; i < 5; i++) {
+          for (i = 0; i < 5; i++) {
             if (array[i]) {
               break;
             }
@@ -314,13 +314,13 @@ void greed(uint8_t human) {
 
         /* Calculate the play */
         xor = 0;
-        for(i = 0; i < 5; i++) {
+        for (i = 0; i < 5; i++) {
           xor ^= array[i];
         }
 
         /* No winning strategy */
         if (!xor) {
-          for(i = 0; i < 5; i++) {
+          for (i = 0; i < 5; i++) {
             if (array[i]) {
               n = i;
               break;
@@ -332,13 +332,13 @@ void greed(uint8_t human) {
         }
 
         /* The if is going to be met because xor != 0 */
-        for(h = 3; ; h--) {
+        for (h = 3; ; h--) {
           if (xor & (1 << h)) {
             break;
           }
         }
 
-        for(i = 0; i < 5; i++) {
+        for (i = 0; i < 5; i++) {
           if (array[i] & (1 << h)) {
             n = i;
             break;
@@ -410,7 +410,7 @@ void printChests(uint8_t *available) {
 
   x = 3;
   y = 4;
-  for(i = 0; i < 26; i++) {
+  for (i = 0; i < 26; i++) {
     if (!available[i]) {
       continue;
     }
@@ -433,12 +433,12 @@ void rich() {
   uint8_t available[27];
   uint8_t order[26];
   memset(available, 1, sizeof(available));
-  for(i = 0; i < 26; i++) {
+  for (i = 0; i < 26; i++) {
     order[i] = i;
   }
 
   /* Randomize */
-  for(i = 0; i < 26; i++) {
+  for (i = 0; i < 26; i++) {
     n = (random() % (26 - i)) + i;
 
     s = order[i];
@@ -482,7 +482,7 @@ void rich() {
     ClearVram();
     printChests(available);
 
-    for(i = 0; !available[i]; i++);
+    for (i = 0; !available[i]; i++);
     printColoredByte2(5, 5, i, BLUE_NUMBER);
     x = 3;
     y = 4;
@@ -493,9 +493,9 @@ void rich() {
         printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
 
         /* The array is 27 elements long, and 26 is always one */
-        for(i = i + 1; !available[i]; i++);
+        for (i = i + 1; !available[i]; i++);
         if (i == 26) {
-          for(i = 0; !available[i]; i++);
+          for (i = 0; !available[i]; i++);
           x = 3;
           y = 4;
         }
@@ -512,9 +512,9 @@ void rich() {
       else if (pressed[0] & BTN_LEFT) {
         printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
 
-        for(i = i - 1; !available[i] && i < 255; i--);
+        for (i = i - 1; !available[i] && i < 255; i--);
         if (i == 255) {
-          for(i = 25; !available[i]; i--);
+          for (i = 25; !available[i]; i--);
           x = 3 + ((left - 1) % 5) * 5;
           y = 4 + ((left - 1) / 5) * 4;
         }
@@ -583,7 +583,7 @@ void rich() {
     if (left == 1) {
       ClearVram();
 
-      for(i = 0; !available[i]; i++);
+      for (i = 0; !available[i]; i++);
 
       Print(6, 6, strWantKeep);
       Print(6, 7, strChestNo);
@@ -654,7 +654,7 @@ void rich() {
     /* Calculate the average */
     r = 0;
     n = 0;
-    for(i = 0; i < 26; i++) {
+    for (i = 0; i < 26; i++) {
       if (available[i] || i == s) {
         r += pgm_read_dword(prizes + order[i]);
         n++;
@@ -729,7 +729,7 @@ void rich() {
 
 uint8_t testSlide(uint8_t *m) {
   int i;
-  for(i = 0; i < 16; i++) if (m[i] != i) return 0;
+  for (i = 0; i < 16; i++) if (m[i] != i) return 0;
   return 1;
 }
 
@@ -748,12 +748,12 @@ void slide() {
   uint8_t m[16];
   uint8_t i, p;
 
-  for(i = 0; i < 16; i++) {
+  for (i = 0; i < 16; i++) {
     m[i] = i;
   }
 
   /* Randomize the board */
-  for(i = 0; i < 15; i++) {
+  for (i = 0; i < 15; i++) {
     p = (random() % (16 - i)) + i;
     if (p != i) {
       m[p] ^= m[i];
@@ -765,11 +765,11 @@ void slide() {
     m[0] = 1;
     m[1] = 0;
   }
-  for(p = 0; m[p]; p++);
+  for (p = 0; m[p]; p++);
 
   /* Draw the initial state */
   ClearVram();
-  for(i = 0; i < 16; i++) {
+  for (i = 0; i < 16; i++) {
     if (!m[i]) continue;
     DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4, boxMap);
     printColoredByte2((i & 3) * 6 + 6,
@@ -842,10 +842,10 @@ void slide() {
 uint8_t getParent(uint8_t v) {
   uint8_t i, o;
 
-  for(i = v; parent[i] != i; i = parent[i]);
+  for (i = v; parent[i] != i; i = parent[i]);
   o = parent[v];
   parent[v] = i;
-  for(; parent[v] != v; v = o) {
+  for (; parent[v] != v; v = o) {
     o = parent[v];
     parent[v] = i;
   }
@@ -865,17 +865,17 @@ uint8_t checkConnectivity(uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], uint8_t l) {
     };
 
   /* Parent array for the union find structure */
-  for(y = 0; y < CAVE_HEIGHT; y++) {
-    for(x = 0; x < CAVE_WIDTH; x++) {
+  for (y = 0; y < CAVE_HEIGHT; y++) {
+    for (x = 0; x < CAVE_WIDTH; x++) {
       parent[(y << 4) | x] = (y << 4) | x;
     }
   }
 
   /* Union all the edges */
-  for(y = 0; y < CAVE_HEIGHT; y++) {
-    for(x = 0; x < CAVE_WIDTH; x++) {
+  for (y = 0; y < CAVE_HEIGHT; y++) {
+    for (x = 0; x < CAVE_WIDTH; x++) {
       if (map[y][x] == HOLE_ROOM) continue;
-      for(i = 0; i < 4; i++) {
+      for (i = 0; i < 4; i++) {
         yy = y + CAVE_HEIGHT + dy[i];
         yy %= CAVE_HEIGHT;
         xx = x + CAVE_WIDTH + dx[i];
@@ -922,7 +922,7 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
     };
   uint8_t yy, xx, i, d;
 
-  for(i = 0; i < 4; i++) {
+  for (i = 0; i < 4; i++) {
     yy = y + CAVE_HEIGHT + dy[i];
     yy %= CAVE_HEIGHT;
     xx = x + CAVE_WIDTH + dx[i];
@@ -984,11 +984,11 @@ void monster() {
   /* Corridors */
   n = (random() % 31) + 60;
   l = CAVE_WIDTH * CAVE_HEIGHT;
-  for(i = 0; i < n; i++) {
+  for (i = 0; i < n; i++) {
     /* Remove the t-th clean room */
     t = random() % l;
-    for(y = 0; y < CAVE_HEIGHT; y++) {
-      for(x = 0; x < CAVE_WIDTH; x++) {
+    for (y = 0; y < CAVE_HEIGHT; y++) {
+      for (x = 0; x < CAVE_WIDTH; x++) {
         if (!map[y][x] && !(t--)) goto tth_found;
       }
     }
@@ -999,11 +999,11 @@ void monster() {
 
   /* Holes */
   n = (random() % 8) + 1;
-  for(i = 0; i < n; i++) {
+  for (i = 0; i < n; i++) {
     /* Make the t-th clean room a hole */
     t = random() % l;
-    for(y = 0; y < CAVE_HEIGHT; y++) {
-      for(x = 0; x < CAVE_WIDTH; x++) {
+    for (y = 0; y < CAVE_HEIGHT; y++) {
+      for (x = 0; x < CAVE_WIDTH; x++) {
         if (map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_hole;
       }
     }
@@ -1016,8 +1016,8 @@ void monster() {
 
   /* Wumpus */
   t = random() % l;
-  for(y = 0; y < CAVE_HEIGHT; y++) {
-    for(x = 0; x < CAVE_WIDTH; x++) {
+  for (y = 0; y < CAVE_HEIGHT; y++) {
+    for (x = 0; x < CAVE_WIDTH; x++) {
       if (map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_wumpus;
     }
   }
@@ -1030,14 +1030,14 @@ void monster() {
 
   /* Guy */
   i = 0;
-  for(y = 0; y < CAVE_HEIGHT; y++) {
-    for(x = 0; x < CAVE_WIDTH; x++) {
+  for (y = 0; y < CAVE_HEIGHT; y++) {
+    for (x = 0; x < CAVE_WIDTH; x++) {
       if (!map[y][x]) i++;
     }
   }
   t = random() % i;
-  for(y = 0; y < CAVE_HEIGHT; y++) {
-    for(x = 0; x < CAVE_WIDTH; x++) {
+  for (y = 0; y < CAVE_HEIGHT; y++) {
+    for (x = 0; x < CAVE_WIDTH; x++) {
       if (!map[y][x] && !(t--)) goto tth_found_guy;
     }
   }
@@ -1056,8 +1056,8 @@ void monster() {
   ClearVram();
   while (1) {
     /* Redraw */
-    for(i = 0; i < CAVE_HEIGHT; i++) {
-      for(n = 0; n < CAVE_WIDTH; n++) {
+    for (i = 0; i < CAVE_HEIGHT; i++) {
+      for (n = 0; n < CAVE_WIDTH; n++) {
         if (map[i][n] & 0x80) {
           DrawMap2(3 + (n << 1),
             4 + (i << 1),
@@ -1068,7 +1068,7 @@ void monster() {
     }
 
     /* Draw the targets if shooting */
-    for(i = 0; l && i < 4; i++) {
+    for (i = 0; l && i < 4; i++) {
       yy = y + CAVE_HEIGHT + dy[i];
       yy %= CAVE_HEIGHT;
       xx = x + CAVE_WIDTH + dx[i];
@@ -1165,8 +1165,8 @@ void monster() {
   controllerEnd();
 
   /* Draw the hole cave */
-  for(i = 0; i < CAVE_HEIGHT; i++) {
-    for(n = 0; n < CAVE_WIDTH; n++) {
+  for (i = 0; i < CAVE_HEIGHT; i++) {
+    for (n = 0; n < CAVE_WIDTH; n++) {
       DrawMap2(3 + (n << 1),
         4 + (i << 1),
         rooms[(i == y && x == n? 8 : 0) +
@@ -1185,7 +1185,7 @@ void monster() {
 
 uint8_t testArray(uint8_t *m) {
   int i;
-  for(i = 1; i < 16; i++) {
+  for (i = 1; i < 16; i++) {
     if (m[i] < m[i - 1]) return 0;
   }
   return 1;
@@ -1206,8 +1206,8 @@ void rain(uint8_t human) {
   ClearVram();
   Fill(0, 5, 30, 19, SKY_TILE);
   Fill(14, 0, 2, 28, PAINTED_TILE);
-  for(i = 0; i <= human; i++) {
-    for(n = 0; n < 10; n++) {
+  for (i = 0; i <= human; i++) {
+    for (n = 0; n < 10; n++) {
       DrawMap2(3 + n + (15 * i), 6, canonMap);
       SetTile(3 + n + (15 * i), 24, CRACK_TILE);
     }
@@ -1224,8 +1224,8 @@ void rain(uint8_t human) {
     controllerStart();
 
     /* Destroy falling numbers */
-    for(i = 0; i <= human; i++) {
-      for(n = 0; n < 12; n++) {
+    for (i = 0; i <= human; i++) {
+      for (n = 0; n < 12; n++) {
         if (n == 2 || n == 3) continue;
         if (pressed[i] & (1 << n)) {
         }
@@ -1271,9 +1271,9 @@ void sort(uint8_t human) {
   uint8_t m[2][16], i, n, p[2], s[2], d;
 
   /* Generate a random order */
-  for(i = 0; i < 16; i++) m[0][i] = i;
+  for (i = 0; i < 16; i++) m[0][i] = i;
   while (testArray(m[0])) {
-    for(i = 0; i < 16; i++) {
+    for (i = 0; i < 16; i++) {
       n = (random() % (16 - i)) + i;
       if (n != i) {
         m[0][n] ^= m[0][i];
@@ -1282,7 +1282,7 @@ void sort(uint8_t human) {
       }
     }
   }
-  for(i = 0; i < 16; i++) m[1][i] = m[0][i];
+  for (i = 0; i < 16; i++) m[1][i] = m[0][i];
   p[0] = p[1] = 0;
   s[0] = s[1] = 0xff;
 
@@ -1290,7 +1290,7 @@ void sort(uint8_t human) {
   ClearVram();
   Print(10, 6, strPlayer1);
   Print(10, 14, strPlayer2);
-  for(i = 0; i < 8; i++) {
+  for (i = 0; i < 8; i++) {
     printColoredByte2(3 * i + 4,
       8, m[0][i],
       (i? WHITE_NUMBER : BLUE_NUMBER));
@@ -1313,7 +1313,7 @@ void sort(uint8_t human) {
   while (1) {
     controllerStart();
 
-    for(i = 0; i < 2; i++) {
+    for (i = 0; i < 2; i++) {
       n = p[i];
       if (!i || human) {
         if (pressed[i] & BTN_RIGHT) {
@@ -1436,7 +1436,7 @@ uint16_t topmenu() {
   DrawMap2(1, 2, titleMap);
 
   /* Print the list */
-  for(i = 0; i < 16; i++) {
+  for (i = 0; i < 16; i++) {
     t = base + (uint16_t) i;
 
     /* To always generate the same names */
