@@ -68,10 +68,14 @@
                 width="2" height="2"/>
             <map var-name="vTrollMap" left="15" top="13"
                 width="2" height="2"/>
-            <map var-name="stunnedHTrollMap" left="15" top="13"
+            <map var-name="stunnedHTrollMap" left="17" top="13"
                 width="2" height="2"/>
-            <map var-name="stunnedVTrollMap" left="17" top="13"
+            <map var-name="stunnedVTrollMap" left="19" top="13"
                 width="2" height="2"/>
+            <map var-name="sTrollMap" left="21" top="13"
+                width="2" height="2"/>
+            <map var-name="trollenTitleMap" left="0" top="14"
+                width="8" height="4"/>
         </maps>
     </output>
 </gfx-xform>

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <avr/pgmspace.h>
 #include "data/tileset.inc"
+#include "data/trollen.inc"
 
 #define ARROW_TILE 10
 #define PAINTED_TILE 11
@@ -28,6 +29,26 @@
 #define MOVE_DELAY 20
 #define SHOT_DELAY 6
 #define FASTER_DELAY 6
+#define NO_TROLL 0
+#define V_TROLL 1
+#define H_TROLL 2
+#define S_TROLL 3
+#define TOP_WALL 1
+#define RIGHT_WALL 2
+#define BOTTOM_WALL 4
+#define LEFT_WALL 8
+#define MAX_TRAPS 3
+#define NO_TILE 201
+#define TR_TILE 200
+#define BR_TILE 199
+#define BL_TILE 198
+#define TL_TILE 197
+#define R_TILE 196
+#define L_TILE 195
+#define B_TILE 194
+#define T_TILE 193
+#define VICTORY 1
+#define DEFEAT 2
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -35,8 +56,8 @@ const char strGrab[] PROGMEM = "GRAB";
 const char str9[] PROGMEM = "9 SQUARES";
 const char strGet[] PROGMEM = "GET 3";
 const char strCircles[] PROGMEM = "OS AND XS";
+const char strTrollen [] PROGMEM = "TROLLEN";
 const char strEscape[] PROGMEM = "ESCAPE";
-const char strRun[] PROGMEM = "RUN";
 const char strAdventure[] PROGMEM = "ADVENTURE";
 const char strSlide[] PROGMEM = "SLIDE";
 const char strPuzzle[] PROGMEM = "PUZZLE";
@@ -62,7 +83,7 @@ const char strDream[] PROGMEM = "DREAM";
 const char * const names[] PROGMEM = {
   strGreed, strPiles, strGrab,
   str9, strGet, strCircles,
-  strEscape, strRun, strAdventure,
+  strTrollen, strEscape, strAdventure,
   strSlide, strPuzzle, strAncient,
   strOne, strRemove, strTake,
   strMonster, strDungeon, strHunt,
@@ -71,7 +92,6 @@ const char * const names[] PROGMEM = {
   strArray, strSort, strFast,
   strRich, strChests, strDream
 };
-
 const char strVsCpu[] PROGMEM = "VS CPU";
 const char strVsHuman[] PROGMEM = "VS HUMAN";
 const char strExit[] PROGMEM = "EXIT";
@@ -110,6 +130,7 @@ const char strLives[] PROGMEM = "LIVES:";
 const char strScore[] PROGMEM = "SCORE:";
 const char strGameOver[] PROGMEM = "GAME OVER";
 const char strDraw[] PROGMEM = "DRAW";
+const char strDied[] PROGMEM = "YOU DIED";
 
 const char * const batteries[] PROGMEM = {
   battery0Map,
@@ -143,6 +164,23 @@ const uint32_t prizes[] PROGMEM = {
   20000000, 30000000, 40000000, 50000000, 75000000, 100000000
 };
 
+struct point {
+  int8_t x, y;
+};
+
+struct troll {
+  struct point pos;
+  uint8_t stun;
+  uint8_t type;
+};
+
+struct trollenLevel {
+  struct point hero;
+  struct troll troll[2];
+  struct point trap[MAX_TRAPS];
+  uint8_t map[6][6];
+};
+
 extern uint8_t vram[];
 /* Controller Handling */
 uint16_t held[2] = {0, 0},
@@ -171,6 +209,9 @@ void monster();
 uint8_t testArray(uint8_t *m);
 void rain(uint8_t human);
 void sort(uint8_t human);
+void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
+void trollenDrawLevel(const struct trollenLevel *level);
+uint8_t trollen(uint8_t level);
 uint16_t topmenu();
 int main();
 
@@ -1538,6 +1579,344 @@ void sort(uint8_t human) {
   controllerEnd();
 }
 
+void trollenLoadLevel(uint8_t n, struct trollenLevel *level) {
+  uint8_t i, t, b, o, x, y;
+  uint8_t l[13];
+  for (i = 0; i < 13; i++)
+    l[i] = pgm_read_byte(trollenLevels[n] + i);
+
+  memset(level->map, 0, 6*6*sizeof(uint8_t));
+
+  for (i = 0; i < 6; i++) {
+    level->map[0][i] |= TOP_WALL;
+    level->map[i][5] |= RIGHT_WALL;
+    level->map[5][i] |= BOTTOM_WALL;
+    level->map[i][0] |= LEFT_WALL;
+  }
+
+  for (i = 0; i < 30; i++) {
+    b = i / 8;
+    o = i % 8;
+    x = i % 5;
+    y = i / 5;
+    if ((l[b] >> o) & 1) {
+      level->map[y][x] |= RIGHT_WALL;
+      level->map[y][x+1] |= LEFT_WALL;
+    }
+  }
+  for (i = 0; i < 30; i++) {
+    b = (i+30) / 8;
+    o = (i+30) % 8;
+    x = i % 6;
+    y = i / 6;
+    if ((l[b] >> o) & 1) {
+      level->map[y][x] |= BOTTOM_WALL;
+      level->map[y+1][x] |= TOP_WALL;
+    }
+  }
+
+  t = ((l[8] & 0x3) << 4) | ((l[7] >> 4) & 0xf);
+  level->trap[0].x = (t%6)*4;
+  level->trap[0].y = (t/6)*4;
+
+  t = (l[8] >> 2) & 0x3f;
+  level->trap[1].x = (t%6)*4;
+  level->trap[1].y = (t/6)*4;
+
+  t = l[9] & 0x3f;
+  level->trap[2].x = (t%6)*4;
+  level->trap[2].y = (t/6)*4;
+
+  t = ((l[10] & 0xf) << 2) | ((l[9] >> 6) &  0x3f);
+  level->hero.x = (t%6)*4;
+  level->hero.y = (t/6)*4;
+
+  t = ((l[11] & 0x3) << 4) | ((l[10] >> 4) & 0xf);
+  level->troll[0].pos.x = (t%6)*4;
+  level->troll[0].pos.y = (t/6)*4;;
+
+  t = (l[11] >> 2) & 0x3f;
+  level->troll[1].pos.x = (t%6)*4;
+  level->troll[1].pos.y = (t/6)*4;;
+
+  t = l[12] & 0x1f;
+  if (t < 6)
+    level->map[0][t] &= ~TOP_WALL;
+  else if (t < 12)
+    level->map[5][t%6] &= ~BOTTOM_WALL;
+  else if (t < 18)
+    level->map[t%6][0] &= ~LEFT_WALL;
+  else if (t < 24)
+    level->map[t%6][5] &= ~RIGHT_WALL;
+
+  if (level->troll[0].pos.x >= 6*4 || level->troll[0].pos.y >= 6*4)
+    level->troll[0].type = NO_TROLL;
+  else if ((l[12] >> 5) & 1)
+    level->troll[0].type = V_TROLL;
+  else
+    level->troll[0].type = H_TROLL;
+
+  if (level->troll[1].pos.x >= 6*4 || level->troll[1].pos.y >= 6*4)
+    level->troll[1].type = NO_TROLL;
+  else if ((l[12] >> 6) & 1)
+    level->troll[1].type = V_TROLL;
+  else
+    level->troll[0].type = H_TROLL;
+
+  level->troll[0].stun = 0;
+  level->troll[1].stun = 0;
+}
+
+void trollenDrawLevel(const struct trollenLevel *level) {
+  uint8_t i, j, x, y;
+
+  for (y = 2, i = 0; i < 6; i++, y += 4) {
+    for (x = 3, j = 0; j < 6; j++, x += 4) {
+      SetTile(x, y,
+          level->map[i][j] & TOP_WALL?
+            (level->map[i][j] & LEFT_WALL? TL_TILE : T_TILE)
+            : (level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE));
+
+      SetTile(x+1, y, level->map[i][j] & TOP_WALL? T_TILE : NO_TILE);
+      SetTile(x+2, y, level->map[i][j] & TOP_WALL? T_TILE : NO_TILE);
+
+      SetTile(x+3, y,
+          level->map[i][j] & TOP_WALL?
+            (level->map[i][j] & RIGHT_WALL? TR_TILE : T_TILE)
+            : (level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE));
+
+      SetTile(x, y+1, level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE);
+      SetTile(x+1, y+1, NO_TILE);
+      SetTile(x+2, y+1, NO_TILE);
+      SetTile(x+3, y+1, level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE);
+
+      SetTile(x, y+2, level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE);
+      SetTile(x+1, y+2, NO_TILE);
+      SetTile(x+2, y+2, NO_TILE);
+      SetTile(x+3, y+2, level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE);
+
+      SetTile(x, y+3,
+          level->map[i][j] & BOTTOM_WALL?
+            (level->map[i][j] & LEFT_WALL? BL_TILE : B_TILE)
+            : (level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE));
+
+      SetTile(x+1, y+3, level->map[i][j] & BOTTOM_WALL? B_TILE : NO_TILE);
+      SetTile(x+2, y+3, level->map[i][j] & BOTTOM_WALL? B_TILE : NO_TILE);
+
+      SetTile(x+3, y+3,
+          level->map[i][j] & BOTTOM_WALL?
+            (level->map[i][j] & RIGHT_WALL? BR_TILE : B_TILE)
+            : (level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE));
+    }
+  }
+
+  for (i = 0; i < MAX_TRAPS; i++)
+    if (level->trap[i].x < 6*4 && level->trap[i].y < 6*4)
+      DrawMap2(level->trap[i].x+4, level->trap[i].y+3, symbolMap);
+
+  DrawMap2(level->hero.x+4, level->hero.y+3, trollGuyMap);
+
+  for (i = 0; i < 2; i++) {
+    if (level->troll[i].type == V_TROLL)
+      DrawMap2(level->troll[i].pos.x+4, level->troll[i].pos.y+3,
+          level->troll[i].stun? stunnedVTrollMap : vTrollMap);
+    else if (level->troll[i].type == H_TROLL)
+      DrawMap2(level->troll[i].pos.x+4, level->troll[i].pos.y+3,
+          level->troll[i].stun? stunnedHTrollMap : hTrollMap);
+    else if (level->troll[i].type == S_TROLL)
+      DrawMap2(level->troll[i].pos.x+4, level->troll[i].pos.y+3, sTrollMap);
+  }
+}
+
+uint8_t trollen(uint8_t levelNum) {
+  struct trollenLevel level;
+  struct point heroNext;
+  struct point trollNext[2];
+  uint8_t heroTile, tTile;
+  uint8_t outcome = 0;
+  trollenLoadLevel(levelNum, &level);
+
+  Fill(0, 0, 30, 28, NO_TILE);
+  trollenDrawLevel(&level);
+
+  while (!outcome) {
+    /* Waiting for input */
+    heroTile = level.map[level.hero.y/4][level.hero.x/4];
+    heroNext = (struct point) {0x3f, 0x3f};
+    while (heroNext.x == 0x3f) {
+      controllerStart();
+
+      if (pressed[0] & BTN_SELECT)
+        return levelNum;
+      else if (pressed[0] & BTN_UP && !(heroTile & TOP_WALL))
+        heroNext = (struct point) {level.hero.x, level.hero.y-4};
+      else if (pressed[0] & BTN_RIGHT && !(heroTile & RIGHT_WALL))
+        heroNext = (struct point) {level.hero.x+4, level.hero.y};
+      else if (pressed[0] & BTN_DOWN && !(heroTile & BOTTOM_WALL))
+        heroNext = (struct point) {level.hero.x, level.hero.y+4};
+      else if (pressed[0] & BTN_LEFT && !(heroTile & LEFT_WALL))
+        heroNext = (struct point) {level.hero.x-4, level.hero.y};
+
+      WaitVsync(1);
+      controllerEnd();
+    }
+
+    if (heroNext.x >= 6*4 || heroNext.x < 0
+        || heroNext.y >= 6*4 || heroNext.y < 0)
+      outcome = VICTORY;
+    else
+      for (uint8_t i = 0; i < MAX_TRAPS; i++)
+        if (level.trap[i].x == heroNext.x && level.trap[i].y == heroNext.y)
+          outcome = DEFEAT;
+
+    /* Hero moving */
+    for (uint8_t i = outcome == VICTORY? 3 : 4; i > 0; i--) {
+      if (level.hero.x < heroNext.x)
+        level.hero.x++;
+      else if (level.hero.x > heroNext.x)
+        level.hero.x--;
+      else if (level.hero.y < heroNext.y)
+        level.hero.y++;
+      else if (level.hero.y > heroNext.y)
+        level.hero.y--;
+
+      trollenDrawLevel(&level);
+      WaitVsync(5);
+    }
+
+    if (outcome)
+      continue;
+
+    for (uint8_t s = (level.troll[0].type == S_TROLL? 3 : 2); s > 0; s--) {
+      for (uint8_t i = 0; i < 2; i++) {
+        if (level.troll[i].type == NO_TROLL || level.troll[i].stun)
+         continue;
+
+        trollNext[i] = (struct point) {
+          level.troll[i].pos.x, level.troll[i].pos.y};
+
+        tTile = level.map[level.troll[i].pos.y/4][level.troll[i].pos.x/4];
+        if (level.troll[i].type == V_TROLL) {
+          if (level.hero.y < level.troll[i].pos.y && !(tTile & TOP_WALL))
+            trollNext[i].y -= 4;
+          else if (level.hero.y > level.troll[i].pos.y
+              && !(tTile & BOTTOM_WALL))
+            trollNext[i].y += 4;
+          else if (level.hero.x < level.troll[i].pos.x && !(tTile & LEFT_WALL))
+            trollNext[i].x -= 4;
+          else if (level.hero.x > level.troll[i].pos.x
+              && !(tTile & RIGHT_WALL))
+            trollNext[i].x += 4;
+        }
+        else {
+          if (level.hero.x < level.troll[i].pos.x && !(tTile & LEFT_WALL))
+            trollNext[i].x -= 4;
+          else if (level.hero.x > level.troll[i].pos.x
+              && !(tTile & RIGHT_WALL))
+            trollNext[i].x += 4;
+          else if (level.hero.y < level.troll[i].pos.y && !(tTile & TOP_WALL))
+            trollNext[i].y -= 4;
+          else if (level.hero.y > level.troll[i].pos.y
+              && !(tTile & BOTTOM_WALL))
+            trollNext[i].y += 4;
+        }
+      }
+
+      bool moved[2] = {false, false};
+      for (uint8_t i = 4; i > 0; i--) {
+        uint8_t still = 0;
+        for (uint8_t j = 0; j < 2; j++) {
+          if (level.troll[j].type == NO_TROLL || level.troll[j].stun) {
+            still++;
+            continue;
+          }
+
+          if (level.troll[j].pos.x < trollNext[j].x) {
+            level.troll[j].pos.x++;
+            moved[j] = true;
+          }
+          else if (level.troll[j].pos.x > trollNext[j].x) {
+            level.troll[j].pos.x--;
+            moved[j] = true;
+          }
+          else if (level.troll[j].pos.y < trollNext[j].y) {
+            level.troll[j].pos.y++;
+            moved[j] = true;
+          }
+          else if (level.troll[j].pos.y > trollNext[j].y) {
+            level.troll[j].pos.y--;
+            moved[j] = true;
+          }
+          else
+            still++;
+        }
+
+        if (still == 2)
+          break;
+
+        trollenDrawLevel(&level);
+        WaitVsync(5);
+      }
+
+      for (uint8_t i = 0; i < 2; i++) {
+        if (level.troll[i].type == NO_TROLL)
+          continue;
+
+        if (level.hero.x == level.troll[i].pos.x
+            && level.hero.y == level.troll[i].pos.y)
+          outcome = DEFEAT;
+
+        for (uint8_t j = 0; j < MAX_TRAPS; j++) {
+          if (moved[i] && !level.troll[i].stun
+              && level.troll[i].pos.x == level.trap[j].x
+              && level.troll[i].pos.y == level.trap[j].y) {
+            level.troll[i].stun = 4;
+            trollenDrawLevel(&level);
+            WaitVsync(1);
+          }
+        }
+      }
+
+      if (level.troll[0].pos.x == level.troll[1].pos.x
+          && level.troll[0].pos.y == level.troll[1].pos.y
+          && level.troll[0].type && level.troll[1].type) {
+        level.troll[0].type = S_TROLL;
+        level.troll[0].stun = 0;
+        level.troll[1].type = NO_TROLL;
+
+        trollenDrawLevel(&level);
+        WaitVsync(1);
+
+        break;
+      }
+    }
+
+    if (level.troll[0].stun)
+      level.troll[0].stun--;
+    if (level.troll[1].stun)
+      level.troll[1].stun--;
+  }
+
+  if (outcome == VICTORY)
+    Print(8, 12, strCongrat);
+  else
+    Print(11, 12, strDied);
+  
+  while (1) {
+      controllerStart();
+
+      if (pressed[0] & BTN_START) {
+        controllerEnd();
+        break;
+      }
+
+      WaitVsync(1);
+      controllerEnd();
+  }
+
+  return levelNum + (outcome == VICTORY? 1 : 0);
+}
+
 uint16_t topmenu() {
   uint16_t base = 0;
   uint16_t t;
@@ -1622,6 +2001,7 @@ uint16_t topmenu() {
 int main() {
   uint16_t ret;
   uint32_t r;
+  uint8_t level = 0;
   uint8_t i;
   /* InitMusicPlayer(patches); */
   SetMasterVolume(0xff);
@@ -1678,6 +2058,66 @@ int main() {
               }
               srandom(r);
               greed(i);
+              break;
+            }
+
+            r++;
+            WaitVsync(1);
+            controllerEnd();
+          }
+        }
+        break;
+
+      case 2:
+        /* Trollen */
+        while (1) {
+          /* Draw the menu */
+          ClearVram();
+          Print((((ret % 30) / 10) == 1? 12 : 11), 5,
+            (const char *) pgm_read_word(names + 6 +
+              ((ret % 30) / 10)));
+          DrawMap2(11, 8, trollenTitleMap);
+          Print(12, 15, strStart);
+          PrintByte(20, 15, level, 0);
+          Print(12, 16, strExit);
+          SetTile(10, 15, ARROW_TILE);
+          Print(5, 21, strCFlavio);
+          Print(5, 23, strLicense);
+          Print(7, 24, strMIT);
+
+          i = 0;
+          r = 0;
+          while (1) {
+            controllerStart();
+
+            if (pressed[0] & BTN_DOWN) {
+              SetTile(10, 15 + i, 0);
+              i = (i + 1) & 1;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_UP) {
+              SetTile(10, 15 + i, 0);
+              i = (6 + i - 1) & 1;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_LEFT && !i) {
+              /* level is unsigned */
+              if (--level >= NUM_TROLLEN_LEVELS)
+                level = NUM_TROLLEN_LEVELS-1;
+              PrintByte(20, 15, level, 0);
+            }
+            else if (pressed[0] & BTN_RIGHT && !i) {
+              if (++level >= NUM_TROLLEN_LEVELS)
+                level = 0;
+              PrintByte(20, 15, level, 0);
+            }
+            else if (pressed[0] & BTN_START) {
+              controllerEnd();
+              if (i) {
+                goto beginning;
+              }
+              srandom(r);
+              level = trollen(level);
               break;
             }
 
