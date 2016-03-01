@@ -5,6 +5,7 @@
 #include <avr/pgmspace.h>
 #include "data/tileset.inc"
 #include "data/trollen.inc"
+#include "data/grid.inc"
 
 #define ARROW_TILE 10
 #define PAINTED_TILE 11
@@ -55,7 +56,7 @@ const char strPiles[] PROGMEM = "PILES";
 const char strGrab[] PROGMEM = "GRAB";
 const char str9[] PROGMEM = "9 SQUARES";
 const char strGet[] PROGMEM = "GET 3";
-const char strCircles[] PROGMEM = "OS AND XS";
+const char strGrid[] PROGMEM = "THE GRID";
 const char strTrollen [] PROGMEM = "TROLLEN";
 const char strEscape[] PROGMEM = "ESCAPE";
 const char strAdventure[] PROGMEM = "ADVENTURE";
@@ -82,7 +83,7 @@ const char strChests[] PROGMEM = "CHESTS";
 const char strDream[] PROGMEM = "DREAM";
 const char * const names[] PROGMEM = {
   strGreed, strPiles, strGrab,
-  str9, strGet, strCircles,
+  strGrid, strGet, str9,
   strTrollen, strEscape, strAdventure,
   strSlide, strPuzzle, strAncient,
   strOne, strRemove, strTake,
@@ -164,20 +165,20 @@ const uint32_t prizes[] PROGMEM = {
   20000000, 30000000, 40000000, 50000000, 75000000, 100000000
 };
 
-struct point {
+struct int8_t_pair {
   int8_t x, y;
 };
 
 struct troll {
-  struct point pos;
+  struct int8_t_pair pos;
   uint8_t stun;
   uint8_t type;
 };
 
 struct trollenLevel {
-  struct point hero;
+  struct int8_t_pair hero;
   struct troll troll[2];
-  struct point trap[MAX_TRAPS];
+  struct int8_t_pair trap[MAX_TRAPS];
   uint8_t map[6][6];
 };
 
@@ -207,6 +208,12 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
 void monster();
 uint8_t testArray(uint8_t *m);
+void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
+uint16_t gridConvert(const int8_t l[3][3]);
+struct int8_t_pair gridGetMoveFromCache(int8_t p, const int8_t l[3][3]);
+int8_t gridCheck(const int8_t l[3][3]);
+struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]);
+void grid(uint8_t human);
 void rain(uint8_t human);
 void sort(uint8_t human);
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
@@ -1252,6 +1259,178 @@ uint8_t testArray(uint8_t *m) {
   return 1;
 }
 
+int8_t gridCheck(const int8_t l[3][3]) {
+  for (uint8_t i = 0; i < 3; i++) {
+    if (l[i][0] && l[i][0] == l[i][1] && l[i][0] == l[i][2])
+      return l[i][0];
+    if (l[0][i] && l[0][i] == l[1][i] && l[0][i] == l[2][i])
+      return l[0][i];
+  }
+
+  if (l[0][0] && l[0][0] == l[1][1] && l[0][0] == l[2][2])
+    return l[0][0];
+  if (l[0][2] && l[0][2] == l[1][1] && l[0][2] == l[2][0])
+    return l[0][2];
+
+  uint8_t t = 0;
+  for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t j = 0; j < 3; j++)
+      if (l[i][j]) t++;
+
+  return (t == 9? 0 : 0x3f);
+}
+
+uint16_t gridConvert(const int8_t l[3][3]) {
+  uint32_t r = 0;
+  for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t j = 0; j < 3; j++) {
+      r *= (uint32_t) 3;
+      r += (l[i][j] < 0? (uint32_t) 2 : (uint32_t) l[i][j]);
+    }
+
+  return (r > (uint32_t) 1 << (uint32_t) 16? 0xffff :(uint16_t) r);
+}
+
+struct int8_t_pair gridGetMoveFromCache(int8_t p, const int8_t l[3][3]) {
+  uint16_t c = gridConvert(l);
+  uint16_t lb = 0, ub = GRID_STATES_LEN-1, m;
+
+  while (lb < ub) {
+    m = (lb+ub)/2;
+
+    if (pgm_read_word(gridStatesKey+m) >= c)
+      ub = m;
+    else
+      lb = m+1;
+  }
+
+  return (pgm_read_word(gridStatesKey+lb) != c?
+      (struct int8_t_pair) {-1, -1}
+      : (struct int8_t_pair) {c, pgm_read_word(gridStatesVal+lb)});
+}
+
+struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]) {
+  int8_t best = -p;
+  int8_t move = -1;
+  struct int8_t_pair a;
+  int8_t c = gridCheck(l);
+
+  if (c != 0x3f)
+    return (struct int8_t_pair) {c, -1};
+
+  a = gridGetMoveFromCache(p, l);
+  if (a.y != -1) {
+    return a;
+  }
+
+  for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t j = 0; j < 3; j++) {
+      if (l[i][j]) continue;
+      l[i][j] = p;
+      a = gridGetMove(-p, l);
+      l[i][j] = 0;
+      if (move == -1 || (p > 0 && a.x > best) || (p < 0 && a.x < best)) {
+        move = i*3+j;
+        best = a.x;
+      }
+    }
+
+  return (struct int8_t_pair) {best, move};
+}
+
+void gridDrawCursor(int8_t x, int8_t y, uint8_t tile) {
+  Fill(5+7*x, 6+6*y, 6, 1, tile);
+  Fill(5+7*x, 7+6*y, 1, 3, tile);
+  Fill(10+7*x, 7+6*y, 1, 3, tile);
+  Fill(5+7*x, 10+6*y, 6, 1, tile);
+}
+
+void grid(uint8_t players) {
+  int8_t level[3][3];
+  bool human[2] = {true, true};
+  int8_t x, y, c, winner;
+
+  memset(level, 0, sizeof(level));
+  if (players == 1)
+    human[random()&1] = false;
+
+  ClearVram();
+  Fill(5, 11, 20, 1, PAINTED_TILE);
+  Fill(5, 17, 20, 1, PAINTED_TILE);
+  Fill(11, 6, 1, 17, PAINTED_TILE);
+  Fill(18, 6, 1, 17, PAINTED_TILE);
+
+  for (int8_t p = 0; (winner = gridCheck(level)) == 0x3f; p ^= 1) {
+    if (!human[p]) {
+      struct int8_t_pair m = gridGetMove(!p? 1 : -1, level);
+      x = m.y%3;
+      y = m.y/3;
+      WaitVsync(30);
+    }
+    else {
+      DrawMap2(2, 2, p? openChestMap : phoneMap);
+      Print(8, 3, strTurn);
+      SetTile(15, 3, WHITE_NUMBER + (players == 1? 1 : p+1));
+
+      x = y = 0;
+      c = players == 1? 0 : p;
+      gridDrawCursor(x, y, SKY_TILE);
+      for (bool played = false; !played; ) {
+        controllerStart();
+
+        if (pressed[0] & BTN_SELECT)
+          return;
+        else if (pressed[c] & BTN_UP && y) {
+          gridDrawCursor(x, y, 0);
+          gridDrawCursor(x, --y, SKY_TILE);
+        }
+        else if (pressed[c] & BTN_RIGHT && x < 2) {
+          gridDrawCursor(x, y, 0);
+          gridDrawCursor(++x, y, SKY_TILE);
+        }
+        else if (pressed[c] & BTN_LEFT && x) {
+          gridDrawCursor(x, y, 0);
+          gridDrawCursor(--x, y, SKY_TILE);
+        }
+        else if (pressed[c] & BTN_DOWN && y < 2) {
+          gridDrawCursor(x, y, 0);
+          gridDrawCursor(x, ++y, SKY_TILE);
+        }
+        else if (pressed[c] & BTN_A && !level[y][x]) {
+          gridDrawCursor(x, y, 0);
+          played = true;
+        }
+
+        WaitVsync(1);
+        controllerEnd();
+      }
+    }
+
+    level[y][x] = !p? 1 : -1;
+    DrawMap2(6+7*x, 7+6*y, p? openChestMap : phoneMap);
+  }
+
+  Fill(0, 0, 30, 5, 0);
+  if (winner) {
+    Print(7, 3, strWins);
+    Fill(7, 3, 8, 1, 0);
+    DrawMap2(10, 2, winner == -1? openChestMap : phoneMap);
+  }
+  else {
+    Print(13, 3, strDraw);
+  }
+
+  for (bool done = false; !done; ) {
+    controllerStart();
+
+    if (pressed[0] & BTN_START)
+      done = true;
+
+    WaitVsync(1);
+    controllerEnd();
+  }
+}
+
 uint8_t rainMoveDown(uint8_t player) {
   const uint8_t yOffset = 8;
   const uint8_t xOffset = player? 18 : 3;
@@ -1730,8 +1909,8 @@ void trollenDrawLevel(const struct trollenLevel *level) {
 
 uint8_t trollen(uint8_t levelNum) {
   struct trollenLevel level;
-  struct point heroNext;
-  struct point trollNext[2];
+  struct int8_t_pair heroNext;
+  struct int8_t_pair trollNext[2];
   uint8_t heroTile, tTile;
   uint8_t outcome = 0;
   trollenLoadLevel(levelNum, &level);
@@ -1742,20 +1921,20 @@ uint8_t trollen(uint8_t levelNum) {
   while (!outcome) {
     /* Waiting for input */
     heroTile = level.map[level.hero.y/4][level.hero.x/4];
-    heroNext = (struct point) {0x3f, 0x3f};
+    heroNext = (struct int8_t_pair) {0x3f, 0x3f};
     while (heroNext.x == 0x3f) {
       controllerStart();
 
       if (pressed[0] & BTN_SELECT)
         return levelNum;
       else if (pressed[0] & BTN_UP && !(heroTile & TOP_WALL))
-        heroNext = (struct point) {level.hero.x, level.hero.y-4};
+        heroNext = (struct int8_t_pair) {level.hero.x, level.hero.y-4};
       else if (pressed[0] & BTN_RIGHT && !(heroTile & RIGHT_WALL))
-        heroNext = (struct point) {level.hero.x+4, level.hero.y};
+        heroNext = (struct int8_t_pair) {level.hero.x+4, level.hero.y};
       else if (pressed[0] & BTN_DOWN && !(heroTile & BOTTOM_WALL))
-        heroNext = (struct point) {level.hero.x, level.hero.y+4};
+        heroNext = (struct int8_t_pair) {level.hero.x, level.hero.y+4};
       else if (pressed[0] & BTN_LEFT && !(heroTile & LEFT_WALL))
-        heroNext = (struct point) {level.hero.x-4, level.hero.y};
+        heroNext = (struct int8_t_pair) {level.hero.x-4, level.hero.y};
 
       WaitVsync(1);
       controllerEnd();
@@ -1792,7 +1971,7 @@ uint8_t trollen(uint8_t levelNum) {
         if (level.troll[i].type == NO_TROLL || level.troll[i].stun)
          continue;
 
-        trollNext[i] = (struct point) {
+        trollNext[i] = (struct int8_t_pair) {
           level.troll[i].pos.x, level.troll[i].pos.y};
 
         tTile = level.map[level.troll[i].pos.y/4][level.troll[i].pos.x/4];
@@ -2060,6 +2239,55 @@ int main() {
               greed(i);
               break;
             }
+
+            r++;
+            WaitVsync(1);
+            controllerEnd();
+          }
+        }
+        break;
+
+      case 1:
+        /* The Grid */
+        while (1) {
+          /* Draw the menu */
+          ClearVram();
+          Print(10, 5,
+            (const char *) pgm_read_word(names + 3 +
+              ((ret % 30) / 10)));
+          Print(12, 15, strVsCpu);
+          Print(12, 16, strVsHuman);
+          Print(12, 17, strExit);
+          SetTile(10, 15, ARROW_TILE);
+          Print(5, 21, strCFlavio);
+          Print(5, 23, strLicense);
+          Print(7, 24, strMIT);
+
+          i = 0;
+          r = 0;
+          while (1) {
+            controllerStart();
+
+            if (pressed[0] & BTN_DOWN) {
+              SetTile(10, 15 + i, 0);
+              i = (i + 1) % 3;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_UP) {
+              SetTile(10, 15 + i, 0);
+              i = (6 + i - 1) % 3;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_START) {
+              controllerEnd();
+              if (i == 2) {
+                goto beginning;
+              }
+              srandom(r);
+              grid(i+1);
+              break;
+            }
+
 
             r++;
             WaitVsync(1);
