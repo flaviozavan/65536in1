@@ -1901,7 +1901,7 @@ uint8_t trollen(uint8_t levelNum) {
     Print(8, 12, strCongrat);
   else
     Print(11, 12, strDied);
-  
+
   while (1) {
       controllerStart();
 
