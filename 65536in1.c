@@ -5,7 +5,6 @@
 #include <avr/pgmspace.h>
 #include "data/tileset.inc"
 #include "data/trollen.inc"
-#include "data/grid.inc"
 
 #define ARROW_TILE 10
 #define PAINTED_TILE 11
@@ -189,8 +188,8 @@ uint16_t held[2] = {0, 0},
   released[2] = {0, 0},
   prev[2] = {0, 0};
 
-inline void controllerStart();
-inline void controllerEnd();
+void controllerStart();
+void controllerEnd();
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
@@ -209,8 +208,6 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 void monster();
 uint8_t testArray(uint8_t *m);
 void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
-uint16_t gridConvert(const int8_t l[3][3]);
-struct int8_t_pair gridGetMoveFromCache(int8_t p, const int8_t l[3][3]);
 int8_t gridCheck(const int8_t l[3][3]);
 struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]);
 void grid(uint8_t human);
@@ -1272,41 +1269,12 @@ int8_t gridCheck(const int8_t l[3][3]) {
   if (l[0][2] && l[0][2] == l[1][1] && l[0][2] == l[2][0])
     return l[0][2];
 
-  uint8_t t = 0;
   for (uint8_t i = 0; i < 3; i++)
     for (uint8_t j = 0; j < 3; j++)
-      if (l[i][j]) t++;
+      if (!l[i][j])
+        return 0x3f;
 
-  return (t == 9? 0 : 0x3f);
-}
-
-uint16_t gridConvert(const int8_t l[3][3]) {
-  uint32_t r = 0;
-  for (uint8_t i = 0; i < 3; i++)
-    for (uint8_t j = 0; j < 3; j++) {
-      r *= (uint32_t) 3;
-      r += (l[i][j] < 0? (uint32_t) 2 : (uint32_t) l[i][j]);
-    }
-
-  return (r > (uint32_t) 1 << (uint32_t) 16? 0xffff :(uint16_t) r);
-}
-
-struct int8_t_pair gridGetMoveFromCache(int8_t p, const int8_t l[3][3]) {
-  uint16_t c = gridConvert(l);
-  uint16_t lb = 0, ub = GRID_STATES_LEN-1, m;
-
-  while (lb < ub) {
-    m = (lb+ub)/2;
-
-    if (pgm_read_word(gridStatesKey+m) >= c)
-      ub = m;
-    else
-      lb = m+1;
-  }
-
-  return (pgm_read_word(gridStatesKey+lb) != c?
-      (struct int8_t_pair) {-1, -1}
-      : (struct int8_t_pair) {c, pgm_read_word(gridStatesVal+lb)});
+  return 0;
 }
 
 struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]) {
@@ -1317,11 +1285,6 @@ struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]) {
 
   if (c != 0x3f)
     return (struct int8_t_pair) {c, -1};
-
-  a = gridGetMoveFromCache(p, l);
-  if (a.y != -1) {
-    return a;
-  }
 
   for (uint8_t i = 0; i < 3; i++)
     for (uint8_t j = 0; j < 3; j++) {
@@ -1347,12 +1310,10 @@ void gridDrawCursor(int8_t x, int8_t y, uint8_t tile) {
 
 void grid(uint8_t players) {
   int8_t level[3][3];
-  bool human[2] = {true, true};
   int8_t x, y, c, winner;
+  int8_t turn = 0;
 
   memset(level, 0, sizeof(level));
-  if (players == 1)
-    human[random()&1] = false;
 
   ClearVram();
   Fill(5, 11, 20, 1, PAINTED_TILE);
@@ -1360,18 +1321,22 @@ void grid(uint8_t players) {
   Fill(11, 6, 1, 17, PAINTED_TILE);
   Fill(18, 6, 1, 17, PAINTED_TILE);
 
-  for (int8_t p = 0; (winner = gridCheck(level)) == 0x3f; p ^= 1) {
-    if (!human[p]) {
-      struct int8_t_pair m = gridGetMove(!p? 1 : -1, level);
+  for (int8_t p = random()&1; (winner = gridCheck(level)) == 0x3f; p ^= 1) {
+    DrawMap2(2, 2, p? openChestMap : phoneMap);
+    Print(8, 3, strTurn);
+    SetTile(15, 3, WHITE_NUMBER + p+1);
+
+    if (p && players == 1) {
+      DisableSoundEngine();
+      struct int8_t_pair m = !turn?
+        (struct int8_t_pair) {0, random() % 9} :gridGetMove(!p? 1 : -1, level);
       x = m.y%3;
       y = m.y/3;
-      WaitVsync(30);
+      EnableSoundEngine();
+      if (turn)
+        WaitVsync(30);
     }
     else {
-      DrawMap2(2, 2, p? openChestMap : phoneMap);
-      Print(8, 3, strTurn);
-      SetTile(15, 3, WHITE_NUMBER + (players == 1? 1 : p+1));
-
       x = y = 0;
       c = players == 1? 0 : p;
       gridDrawCursor(x, y, SKY_TILE);
@@ -1408,6 +1373,7 @@ void grid(uint8_t players) {
 
     level[y][x] = !p? 1 : -1;
     DrawMap2(6+7*x, 7+6*y, p? openChestMap : phoneMap);
+    turn++;
   }
 
   Fill(0, 0, 30, 5, 0);
