@@ -49,6 +49,11 @@
 #define T_TILE 193
 #define VICTORY 1
 #define DEFEAT 2
+#define OUTSIDE 1
+#define PEG 2
+#define HOLE 3
+#define GOOD_CURSOR 0x80
+#define BAD_CURSOR 0x40
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -201,6 +206,10 @@ void rich();
 uint8_t testSlide(uint8_t *m);
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m);
 void slide();
+void theOneDrawMap(const uint8_t map[7][7]);
+bool theOneIsHoleGood(struct int8_t_pair peg, struct int8_t_pair hole,
+    const uint8_t map[7][7]);
+void theOne();
 uint8_t getParent(uint8_t v, uint8_t *parent);
 uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
@@ -908,6 +917,177 @@ void slide() {
     controllerEnd();
   }
   controllerEnd();
+}
+
+void theOneDrawMap(const uint8_t map[7][7]) {
+  for (uint8_t i = 0; i < 7; i++)
+    for (uint8_t j = 0; j < 7; j++) {
+      if (map[i][j] == OUTSIDE)
+        continue;
+      DrawMap2(5+3*j, 7+i*2,
+          (map[i][j] & 0xf) == HOLE?
+          (map[i][j] & GOOD_CURSOR?
+             goodPegHoleMap : (map[i][j] & BAD_CURSOR?
+               badPegHoleMap : pegHoleMap))
+          : (map[i][j] & GOOD_CURSOR?
+             goodPegMap : (map[i][j] & BAD_CURSOR?
+               badPegMap : pegMap)));
+    }
+}
+
+bool theOneIsHoleGood(struct int8_t_pair peg, struct int8_t_pair hole,
+    const uint8_t map[7][7]) {
+  if ((peg.x != hole.x && peg.y != hole.y)
+      || (abs(peg.x-hole.x) + abs(peg.y-hole.y) != 2))
+    return false;
+
+  if (peg.x > hole.x && (map[peg.y][peg.x-1] & 0xf) != PEG)
+    return false;
+  else if (peg.x < hole.x && (map[peg.y][peg.x+1] & 0xf) != PEG)
+    return false;
+  else if (peg.y > hole.y && (map[peg.y-1][peg.x] & 0xf) != PEG)
+    return false;
+  else if (peg.y < hole.y && (map[peg.y+1][peg.x] & 0xf) != PEG)
+    return false;
+
+  return true;
+}
+
+void theOne() {
+  uint8_t map[7][7];
+  uint8_t pegs = 32;
+  struct int8_t_pair nc, peg, hole, c = (struct int8_t_pair) {3, 3};
+
+  memset(map, PEG, sizeof(map));
+
+  map[0][0] = map[0][1] = map[1][0] = map[1][1] = OUTSIDE;
+  map[0][5] = map[0][6] = map[1][5] = map[1][6] = OUTSIDE;
+  map[5][0] = map[5][1] = map[6][0] = map[6][1] = OUTSIDE;
+  map[5][5] = map[5][6] = map[6][5] = map[6][6] = OUTSIDE;
+  map[3][3] = HOLE;
+  map[c.y][c.x] |= BAD_CURSOR;
+
+  ClearVram();
+
+  while (pegs > 1) {
+    /* Picking the peg */
+    peg.x = -1;
+    nc = c;
+    while (peg.x == -1) {
+      controllerStart();
+
+      theOneDrawMap(map);
+
+      if (pressed[0] & BTN_SELECT)
+        return;
+      else if (pressed[0] & BTN_UP)
+        nc.y--;
+      else if (pressed[0] & BTN_RIGHT)
+        nc.x++;
+      else if (pressed[0] & BTN_DOWN)
+        nc.y++;
+      else if (pressed[0] & BTN_LEFT)
+        nc.x--;
+
+      if ((nc.x != c.x || nc.y != c.y)) {
+        if (nc.x >= 0 && nc.x < 7 && nc.y >= 0 && nc.y < 7
+            && map[nc.y][nc.x] != OUTSIDE) {
+          map[c.y][c.x] &= 0xf;
+          map[nc.y][nc.x] |= (map[nc.y][nc.x] == HOLE?
+              BAD_CURSOR : GOOD_CURSOR);
+          c = nc;
+        }
+        else {
+          nc = c;
+        }
+      }
+      else if (pressed[0] & BTN_A && (map[c.y][c.x] & GOOD_CURSOR)) {
+        peg = c;
+      }
+
+      WaitVsync(1);
+      controllerEnd();
+    }
+
+    /* Picking the hole */
+    c.x = 3;
+    c.y = peg.x == 3 && peg.y == 3? 2 : 3;
+    map[c.y][c.x] |= (map[c.y][c.x] == HOLE && theOneIsHoleGood(peg, c, map)?
+        GOOD_CURSOR : BAD_CURSOR);
+    hole.x = -1;
+    nc = c;
+    while (hole.x == -1) {
+      controllerStart();
+
+      theOneDrawMap(map);
+
+      if (pressed[0] & BTN_SELECT)
+        return;
+      else if (pressed[0] & BTN_UP)
+        nc.y--;
+      else if (pressed[0] & BTN_RIGHT)
+        nc.x++;
+      else if (pressed[0] & BTN_DOWN)
+        nc.y++;
+      else if (pressed[0] & BTN_LEFT)
+        nc.x--;
+      else if (pressed[0] & BTN_B)
+        break;
+
+      if ((nc.x != c.x || nc.y != c.y)) {
+        if (nc.x >= 0 && nc.x < 7 && nc.y >= 0 && nc.y < 7
+            && (nc.x != peg.x || nc.y != peg.y)
+            && map[nc.y][nc.x] != OUTSIDE) {
+          map[c.y][c.x] &= 0xf;
+          map[nc.y][nc.x] |= (map[nc.y][nc.x] == HOLE
+              && theOneIsHoleGood(peg, nc, map)?
+              GOOD_CURSOR : BAD_CURSOR);
+          c = nc;
+        }
+        else {
+          nc = c;
+        }
+      }
+      else if (pressed[0] & BTN_A && (map[c.y][c.x] & GOOD_CURSOR)) {
+        hole = c;
+      }
+
+      WaitVsync(1);
+      controllerEnd();
+    }
+
+    if (hole.x != -1) {
+      map[peg.y][peg.x] = HOLE;
+      map[hole.y][hole.x] = PEG | GOOD_CURSOR;
+      c = hole;
+      pegs--;
+
+      if (peg.x > hole.x)
+        map[peg.y][peg.x-1] = HOLE;
+      else if (peg.x < hole.x)
+        map[peg.y][peg.x+1] = HOLE;
+      else if (peg.y < hole.y)
+        map[peg.y+1][peg.x] = HOLE;
+      else if (peg.y > hole.y)
+        map[peg.y-1][peg.x] = HOLE;
+    }
+    else {
+      map[c.y][c.x] &= 0xf;
+      c = peg;
+    }
+  }
+
+  theOneDrawMap(map);
+  Print(8, 12, strCongrat);
+  for (bool done = false; !done; ) {
+    controllerStart();
+
+    if (pressed[0] & BTN_START)
+      done = true;
+
+    WaitVsync(1);
+    controllerEnd();
+  }
 }
 
 /* No memory for recursion */
@@ -2359,6 +2539,53 @@ int main() {
               }
               srandom(r);
               slide(i);
+              break;
+            }
+
+            r++;
+            WaitVsync(1);
+            controllerEnd();
+          }
+        }
+        break;
+
+      case 4:
+        /* The One */
+        while (1) {
+          /* Draw the menu */
+          ClearVram();
+          Print(10, 5,
+            (const char *) pgm_read_word(names + 12 +
+              ((ret % 30) / 10)));
+          Print(12, 15, strStart);
+          Print(12, 16, strExit);
+          SetTile(10, 15, ARROW_TILE);
+          Print(5, 21, strCFlavio);
+          Print(5, 23, strLicense);
+          Print(7, 24, strMIT);
+
+          i = 0;
+          r = 0;
+          while (1) {
+            controllerStart();
+
+            if (pressed[0] & BTN_DOWN) {
+              SetTile(10, 15 + i, 0);
+              i = (i + 1) & 1;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_UP) {
+              SetTile(10, 15 + i, 0);
+              i = (6 + i - 1) & 1;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_START) {
+              controllerEnd();
+              if (i) {
+                goto beginning;
+              }
+              srandom(r);
+              theOne(i);
               break;
             }
 

@@ -76,6 +76,16 @@
                 width="2" height="2"/>
             <map var-name="trollenTitleMap" left="0" top="14"
                 width="8" height="4"/>
+
+            <!-- The One -->
+            <map var-name="pegMap" left="0" top="18" width="1" height="2"/>
+            <map var-name="pegHoleMap" left="1" top="18" width="1" height="2"/>
+            <map var-name="badPegMap" left="2" top="18" width="1" height="2"/>
+            <map var-name="badPegHoleMap" left="3" top="18"
+                width="1" height="2"/>
+            <map var-name="goodPegMap" left="4" top="18" width="1" height="2"/>
+            <map var-name="goodPegHoleMap" left="5" top="18"
+                width="1" height="2"/>
         </maps>
     </output>
 </gfx-xform>
