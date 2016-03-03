@@ -235,6 +235,9 @@ void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
 void trollenDrawLevel(const struct trollenLevel *level);
 uint8_t trollen(uint8_t level);
 uint16_t topmenu();
+void drawBaseTitle(uint16_t game);
+int8_t twoPlayersMenu();
+int8_t onePlayerMenu(uint8_t level, uint8_t levels);
 int main();
 
 void controllerStart() {
@@ -2529,11 +2532,105 @@ uint16_t topmenu() {
   return (base + (uint16_t) i);
 }
 
-int main() {
-  uint16_t ret;
-  uint32_t r;
-  uint8_t level = 0;
+void drawBaseTitle(uint16_t game) {
+  ClearVram();
+  Print(5, 21, strCFlavio);
+  Print(5, 23, strLicense);
+  Print(7, 24, strMIT);
+
+  srandom(game);
+  const char *name = (const char *) pgm_read_word(names + (game%10)*3
+      + ((game<30? game / 10: random() %3)));
+  uint8_t len;
+  for (len = 0; pgm_read_byte(name+len); len++);
+  Print(15-len/2, 5, name);
+}
+
+int8_t twoPlayersMenu() {
   uint8_t i;
+  uint32_t r;
+
+  Print(12, 15, strVsCpu);
+  Print(12, 16, strVsHuman);
+  Print(12, 17, strExit);
+  SetTile(10, 15, ARROW_TILE);
+
+  i = 0;
+  r = 0;
+  while (1) {
+    controllerStart();
+
+    if (pressed[0] & BTN_DOWN) {
+      SetTile(10, 15 + i, 0);
+      i = (i + 1) % 3;
+      SetTile(10, 15 + i, ARROW_TILE);
+    }
+    else if (pressed[0] & BTN_UP) {
+      SetTile(10, 15 + i, 0);
+      i = (6 + i - 1) % 3;
+      SetTile(10, 15 + i, ARROW_TILE);
+    }
+    else if (pressed[0] & BTN_START) {
+      controllerEnd();
+      srandom(r);
+      return i;
+    }
+
+    r++;
+    WaitVsync(1);
+    controllerEnd();
+  }
+}
+
+int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
+  int8_t i = 0;
+  uint32_t r = 0;
+
+  Print(12, 15, strStart);
+  Print(12, 16, strExit);
+  SetTile(10, 15, ARROW_TILE);
+
+  while (1) {
+    controllerStart();
+
+    if (pressed[0] & BTN_DOWN) {
+      SetTile(10, 15 + i, 0);
+      i = (i + 1) & 1;
+      SetTile(10, 15 + i, ARROW_TILE);
+    }
+    else if (pressed[0] & BTN_UP) {
+      SetTile(10, 15 + i, 0);
+      i = (6 + i - 1) & 1;
+      SetTile(10, 15 + i, ARROW_TILE);
+    }
+    else if (pressed[0] & BTN_LEFT && !i) {
+      /* Level is unsigned */
+      if (--level >= levels)
+        level = levels-1;
+    }
+    else if (pressed[0] & BTN_RIGHT && !i) {
+      if (++level >= levels)
+        level = 0;
+    }
+    else if (pressed[0] & BTN_START) {
+      controllerEnd();
+      srandom(r);
+      return (i? -1 : level);
+    }
+
+    if (levels)
+      PrintByte(20, 15, level, 0);
+
+    r++;
+    WaitVsync(1);
+    controllerEnd();
+  }
+}
+
+int main() {
+  uint16_t game;
+  int8_t r;
+  uint8_t trollenLevel = 0;
   /* InitMusicPlayer(patches); */
   SetMasterVolume(0xff);
   SetTileTable(tileset);
@@ -2542,274 +2639,63 @@ int main() {
 
   while (1) {
     beginning:
-    ret = topmenu();
+    game = topmenu();
 
-    switch(ret % 10) {
-      case 0:
-        /* Greed */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
+    while (1) {
+      drawBaseTitle(game);
+
+      switch(game % 10) {
+        case 0:
+          /* Greed */
           DrawMap2(9, 7, (const char *) pgm_read_word(batteries +
-            (ret % 30) / 10));
+            (game % 30) / 10));
           DrawMap2(13, 7, (const char *) pgm_read_word(batteries +
-            (ret % 30) / 10));
+            (game % 30) / 10));
           DrawMap2(17, 7, (const char *) pgm_read_word(batteries +
-            (ret % 30) / 10));
-          Print(((ret % 30) / 10 == 2? 13 : 12), 5,
-            (const char *) pgm_read_word(names +
-              ((ret % 30) / 10)));
-          Print(12, 15, strVsCpu);
-          Print(12, 16, strVsHuman);
-          Print(12, 17, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
+            (game % 30) / 10));
 
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
+          r = twoPlayersMenu();
+          if (r == 2)
+            goto beginning;
+          greed(r);
+          break;
 
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i == 2) {
-                goto beginning;
-              }
-              srandom(r);
-              greed(i);
-              break;
-            }
+        case 1:
+          /* The Grid */
+          r = twoPlayersMenu();
+          if (r == 2)
+            goto beginning;
+          grid(r+1);
+          break;
 
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 1:
-        /* The Grid */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print(10, 5,
-            (const char *) pgm_read_word(names + 3 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strVsCpu);
-          Print(12, 16, strVsHuman);
-          Print(12, 17, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
-
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i == 2) {
-                goto beginning;
-              }
-              srandom(r);
-              grid(i+1);
-              break;
-            }
-
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 2:
-        /* Trollen */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print((((ret % 30) / 10) == 1? 12 : 11), 5,
-            (const char *) pgm_read_word(names + 6 +
-              ((ret % 30) / 10)));
+        case 2:
+          /* Trollen */
           DrawMap2(11, 8, trollenTitleMap);
-          Print(12, 15, strStart);
-          PrintByte(20, 15, level, 0);
-          Print(12, 16, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
 
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
+          r = onePlayerMenu(trollenLevel, NUM_TROLLEN_LEVELS);
+          if (r == -1)
+            goto beginning;
+          trollenLevel = trollen(r);
+          break;
 
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_LEFT && !i) {
-              /* level is unsigned */
-              if (--level >= NUM_TROLLEN_LEVELS)
-                level = NUM_TROLLEN_LEVELS-1;
-              PrintByte(20, 15, level, 0);
-            }
-            else if (pressed[0] & BTN_RIGHT && !i) {
-              if (++level >= NUM_TROLLEN_LEVELS)
-                level = 0;
-              PrintByte(20, 15, level, 0);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i) {
-                goto beginning;
-              }
-              srandom(r);
-              level = trollen(level);
-              break;
-            }
+        case 3:
+          /* Slide */
+          r = onePlayerMenu(0, 0);
+          if (r == -1)
+            goto beginning;
+          slide();
+          break;
 
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
+        case 4:
+          /* The One */
+          r = onePlayerMenu(0, 0);
+          if (r == -1)
+            goto beginning;
+          theOne();
+          break;
 
-      case 3:
-        /* Slide */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print((((ret % 30) / 10) == 2? 10 : 13), 5,
-            (const char *) pgm_read_word(names + 9 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strStart);
-          Print(12, 16, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
-
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i) {
-                goto beginning;
-              }
-              srandom(r);
-              slide(i);
-              break;
-            }
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 4:
-        /* The One */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print(10, 5,
-            (const char *) pgm_read_word(names + 12 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strStart);
-          Print(12, 16, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
-
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i) {
-                goto beginning;
-              }
-              srandom(r);
-              theOne(i);
-              break;
-            }
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 5:
-        /* Monster */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print((((ret % 30) / 10) == 2? 13 : 12), 5,
-            (const char *) pgm_read_word(names + 15 +
-              ((ret % 30) / 10)));
+        case 5:
+          /* Monster */
           DrawMap2(12, 7, redRoomMap);
           DrawMap2(14, 7, redRoomMap);
           DrawMap2(16, 7, redRoomMap);
@@ -2819,241 +2705,48 @@ int main() {
           DrawMap2(12, 11, redRoomMap);
           DrawMap2(14, 11, redRoomMap);
           DrawMap2(16, 11, redRoomMap);
-          Print(12, 15, strStart);
-          Print(12, 16, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
 
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
+          r = onePlayerMenu(0, 0);
+          if (r == -1)
+            goto beginning;
+          monster();
+          break;
 
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) & 1;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i) {
-                goto beginning;
-              }
-              srandom(r);
-              monster(i);
-              break;
-            }
+        case 6:
+          /* Survival */
+          r = twoPlayersMenu();
+          if (r == 2)
+            goto beginning;
+          survival(r+1);
+          break;
 
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
+        case 7:
+          /* Rain */
+          r = twoPlayersMenu();
+          if (r == 2)
+            goto beginning;
+          rain(r+1);
+          break;
 
-      case 6:
-        /* Rain */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print(11, 5, (const char *) pgm_read_word(names + 18 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strVsCpu);
-          Print(12, 16, strVsHuman);
-          Print(12, 17, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
+        case 8:
+          /* Array */
+          r = twoPlayersMenu();
+          if (r == 2)
+            goto beginning;
+          sort(r);
+          break;
 
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
+        case 9:
+          /* Rich */
+          r = onePlayerMenu(0, 0);
+          if (r == -1)
+            goto beginning;
+          rich();
+          break;
 
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i == 2) {
-                goto beginning;
-              }
-              srandom(r);
-              survival(i+1);
-              break;
-            }
-
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 7:
-        /* Rain */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print((((ret % 30) / 10) == 2? 10 : 13), 5,
-            (const char *) pgm_read_word(names + 21 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strVsCpu);
-          Print(12, 16, strVsHuman);
-          Print(12, 17, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
-
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i == 2) {
-                goto beginning;
-              }
-              srandom(r);
-              rain(i+1);
-              break;
-            }
-
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 8:
-        /* Array */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          Print((((ret % 30) / 10) == 2? 10 : 13), 5,
-            (const char *) pgm_read_word(names + 24 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strVsCpu);
-          Print(12, 16, strVsHuman);
-          Print(12, 17, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
-
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) % 3;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i == 2) {
-                goto beginning;
-              }
-              srandom(r);
-              sort(i);
-              break;
-            }
-
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      case 9:
-        /* Rich */
-        while (1) {
-          /* Draw the menu */
-          ClearVram();
-          DrawMap2(14, 7, openChestMap);
-          Print(((ret % 30) / 10? 13 : 14), 5,
-            (const char *) pgm_read_word(names + 27 +
-              ((ret % 30) / 10)));
-          Print(12, 15, strStart);
-          Print(12, 16, strExit);
-          SetTile(10, 15, ARROW_TILE);
-          Print(5, 21, strCFlavio);
-          Print(5, 23, strLicense);
-          Print(7, 24, strMIT);
-
-          i = 0;
-          r = 0;
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_DOWN) {
-              SetTile(10, 15 + i, 0);
-              i = (i + 1) % 2;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_UP) {
-              SetTile(10, 15 + i, 0);
-              i = (6 + i - 1) % 2;
-              SetTile(10, 15 + i, ARROW_TILE);
-            }
-            else if (pressed[0] & BTN_START) {
-              controllerEnd();
-              if (i) {
-                goto beginning;
-              }
-              srandom(r);
-              rich(i);
-              break;
-            }
-
-            r++;
-            WaitVsync(1);
-            controllerEnd();
-          }
-        }
-        break;
-
-      default:
-        goto beginning;
+        default:
+          goto beginning;
+      }
     }
   }
 
