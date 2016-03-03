@@ -227,7 +227,7 @@ void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
 int8_t gridCheck(const int8_t l[3][3]);
 struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]);
 void grid(uint8_t human);
-void survivalMoveDown(uint8_t p, int8_t height[2][10]);
+bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]);
 void survival(uint8_t players);
 void rain(uint8_t human);
 void sort(uint8_t human);
@@ -1586,19 +1586,34 @@ void grid(uint8_t players) {
   }
 }
 
-void survivalMoveDown(uint8_t p, int8_t height[2][10]) {
+bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]) {
   const uint8_t yOffset = 8;
   const uint8_t xOffset = p? 17 : 3;
   uint8_t *vRow = vram + ((yOffset+16)*VRAM_TILES_H) + xOffset;
   uint8_t *vTopRow = vRow - VRAM_TILES_H;
+  bool cleaning = true;
+
+  for (uint8_t i = 0; i < 10; i++) {
+    if (!height[p][i])
+      cleaning = false;
+  }
+  if (!cleaning)
+    for (uint8_t i = 0; i < 10; i++) {
+      next[p][i] = 127;
+    }
 
   for (uint8_t y = 0; y < 16; y++) {
     vRow = vTopRow;
     vTopRow -= VRAM_TILES_H;
     for (uint8_t x = 0; x < 10; x++)
-      if (y > height[p][x])
+      if (cleaning)
+        vRow[x] = vTopRow[x];
+      else if (y > height[p][x]) {
         vRow[x] = vTopRow[x] == RAM_TILES_COUNT+ABOUT_TILE?
           RAM_TILES_COUNT+SKY_TILE : vTopRow[x];
+        if (vRow[x] == RAM_TILES_COUNT+BLOCK_TILE && next[p][x] == 127)
+          next[p][x] = y;
+      }
       else if (y == height[p][x] && vTopRow[x] != RAM_TILES_COUNT+SKY_TILE) {
         vRow[x] = vTopRow[x];
         if (vRow[x] == RAM_TILES_COUNT+BLOCK_TILE) {
@@ -1608,7 +1623,15 @@ void survivalMoveDown(uint8_t p, int8_t height[2][10]) {
       }
   }
 
+  if (cleaning)
+    for (uint8_t i = 0; i < 10; i++) {
+      height[p][i]--;
+      next[p][i]--;
+    }
+
   Fill(xOffset, yOffset, 10, 1, SKY_TILE);
+
+  return cleaning;
 }
 
 void survival(uint8_t players) {
@@ -1617,6 +1640,7 @@ void survival(uint8_t players) {
   uint8_t cat[2] = {4, 4};
   uint8_t lastY[2] = {23, 23};
   int8_t height[2][10];
+  int8_t next[2][10];
   int8_t about = -1;
   uint8_t movementDelay = MOVE_DELAY;
   uint8_t shotDelay = SHOT_DELAY;
@@ -1673,15 +1697,16 @@ void survival(uint8_t players) {
         if (!alive[i])
           continue;
 
-        survivalMoveDown(i, height);
+        if (survivalMoveDown(i, height, next))
+          lastY[i]--;
       }
 
       if (!nextShot) {
         about = random() % 10;
         blinkState = 1;
         for (uint8_t i = 0; i < 2; i++)
-          if (alive[i])
-            SetTile(3+14*i+about, 8, ABOUT_TILE);
+          if (alive[i] && height[i][about] <= 10)
+              SetTile(3+14*i+about, 8, ABOUT_TILE);
 
         if (!(--nextFaster)) {
           nextFaster = fasterDelay;
@@ -1713,11 +1738,13 @@ void survival(uint8_t players) {
         continue;
       }
 
-      if (pressed[p] & BTN_LEFT && cat[p])
+      if (pressed[p] & BTN_LEFT && cat[p]
+          && next[p][cat[p]] > height[p][cat[p]-1])
         cat[p]--;
-      else if (pressed[p] & BTN_RIGHT && cat[p] < 9)
+      else if (pressed[p] & BTN_RIGHT && cat[p] < 9
+          && next[p][cat[p]] > height[p][cat[p]+1])
         cat[p]++;
-      
+
       x = 3+14*p+cat[p];
       y = 23-height[p][cat[p]];
       tile = vram[y*VRAM_TILES_H+x];
