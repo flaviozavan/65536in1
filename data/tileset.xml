@@ -3,6 +3,31 @@
     <input file="tileset.png" type="png" tile-width="8" tile-height="8"/>
     <output file="tileset.inc">
         <tiles var-name="tileset"/>
+        <defines>
+          <define def-name="SKY_TILE" left="0" top="10"/>
+          <define def-name="ARROW_TILE" left="10" top="0"/>
+          <define def-name="PAINTED_TILE" left="11" top="0"/>
+          <define def-name="PERIOD_TILE" left="14" top="0"/>
+          <define def-name="HIT_TILE" left="3" top="10"/>
+          <define def-name="NON_FIRE_TILE" left="1" top="11"/>
+          <define def-name="FIRE_TILE" left="2" top="11"/>
+          <define def-name="CRACK_TILE" left="3" top="11"/>
+          <define def-name="T_TILE" left="0" top="13"/>
+          <define def-name="B_TILE" left="1" top="13"/>
+          <define def-name="L_TILE" left="2" top="13"/>
+          <define def-name="R_TILE" left="3" top="13"/>
+          <define def-name="TL_TILE" left="4" top="13"/>
+          <define def-name="BL_TILE" left="5" top="13"/>
+          <define def-name="BR_TILE" left="6" top="13"/>
+          <define def-name="TR_TILE" left="7" top="13"/>
+          <define def-name="NO_TILE" left="8" top="13"/>
+          <define def-name="ABOUT_TILE" left="2" top="20"/>
+          <define def-name="CAT_TILE" left="0" top="21"/>
+          <define def-name="RED_BALL_TILE" left="1" top="21"/>
+          <define def-name="GREEN_BALL_TILE" left="2" top="21"/>
+          <define def-name="BLOCK_TILE" left="0" top="22"/>
+          <define def-name="BLOODY_BLOCK_TILE" left="1" top="22"/>
+        </defines>
         <maps pointers-size="8">
             <!-- Top Menu -->
             <map var-name="titleMap" left="0" top="1" width="28" height="6"/>

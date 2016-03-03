@@ -6,14 +6,6 @@
 #include "data/tileset.inc"
 #include "data/trollen.inc"
 
-#define ARROW_TILE 10
-#define PAINTED_TILE 11
-#define PERIOD_TILE 14
-#define SKY_TILE 0xbb
-#define HIT_TILE 0xbd
-#define NON_FIRE_TILE 0xbe
-#define FIRE_TILE 0xbf
-#define CRACK_TILE 0xc0
 #define WHITE_NUMBER 16
 #define BLUE_NUMBER 64
 #define GREEN_NUMBER 74
@@ -38,15 +30,6 @@
 #define BOTTOM_WALL 4
 #define LEFT_WALL 8
 #define MAX_TRAPS 3
-#define NO_TILE 201
-#define TR_TILE 200
-#define BR_TILE 199
-#define BL_TILE 198
-#define TL_TILE 197
-#define R_TILE 196
-#define L_TILE 195
-#define B_TILE 194
-#define T_TILE 193
 #define VICTORY 1
 #define DEFEAT 2
 #define OUTSIDE 1
@@ -54,12 +37,6 @@
 #define HOLE 3
 #define GOOD_CURSOR 0x80
 #define BAD_CURSOR 0x40
-#define ABOUT_TILE 240
-#define CAT_TILE 241
-#define RED_BALL_TILE 242
-#define GREEN_BALL_TILE 243
-#define BLOCK_TILE 244
-#define BLOODY_BLOCK_TILE 245
 #define BLINK_DELAY 4
 
 const char strGreed[] PROGMEM = "GREED";
