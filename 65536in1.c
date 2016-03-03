@@ -2195,7 +2195,7 @@ void trollenLoadLevel(uint8_t n, struct trollenLevel *level) {
   else if ((l[12] >> 6) & 1)
     level->troll[1].type = V_TROLL;
   else
-    level->troll[0].type = H_TROLL;
+    level->troll[1].type = H_TROLL;
 
   level->troll[0].stun = 0;
   level->troll[1].stun = 0;
