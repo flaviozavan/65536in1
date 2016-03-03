@@ -54,6 +54,13 @@
 #define HOLE 3
 #define GOOD_CURSOR 0x80
 #define BAD_CURSOR 0x40
+#define ABOUT_TILE 240
+#define CAT_TILE 241
+#define RED_BALL_TILE 242
+#define GREEN_BALL_TILE 243
+#define BLOCK_TILE 244
+#define BLOODY_BLOCK_TILE 245
+#define BLINK_DELAY 4
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -73,9 +80,9 @@ const char strTake[] PROGMEM = "TAKE";
 const char strMonster[] PROGMEM = "MONSTER";
 const char strDungeon[] PROGMEM = "DUNGEON";
 const char strHunt[] PROGMEM = "HUNT";
-const char strChampionship[] PROGMEM = "CHAMPIONSHIP";
-const char strDuel[] PROGMEM = "DUEL";
-const char strRacquet[] PROGMEM = "RACQUET";
+const char strSurvival[] PROGMEM = "SURVIVAL";
+const char strAvoider[] PROGMEM = "AVOIDER";
+const char strInstinct[] PROGMEM = "INSTINCT";
 const char strRain[] PROGMEM = "RAIN";
 const char strFalling[] PROGMEM = "FALLING BUTTONS";
 const char strReflex[] PROGMEM = "REFLEX";
@@ -92,7 +99,7 @@ const char * const names[] PROGMEM = {
   strSlide, strPuzzle, strAncient,
   strOne, strRemove, strTake,
   strMonster, strDungeon, strHunt,
-  strChampionship, strDuel, strRacquet,
+  strSurvival, strAvoider, strInstinct,
   strRain, strFalling, strReflex,
   strArray, strSort, strFast,
   strRich, strChests, strDream
@@ -220,6 +227,8 @@ void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
 int8_t gridCheck(const int8_t l[3][3]);
 struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]);
 void grid(uint8_t human);
+void survivalMoveDown(uint8_t p, int8_t height[2][10]);
+void survival(uint8_t players);
 void rain(uint8_t human);
 void sort(uint8_t human);
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
@@ -1577,6 +1586,176 @@ void grid(uint8_t players) {
   }
 }
 
+void survivalMoveDown(uint8_t p, int8_t height[2][10]) {
+  const uint8_t yOffset = 8;
+  const uint8_t xOffset = p? 17 : 3;
+  uint8_t *vRow = vram + ((yOffset+16)*VRAM_TILES_H) + xOffset;
+  uint8_t *vTopRow = vRow - VRAM_TILES_H;
+
+  for (uint8_t y = 0; y < 16; y++) {
+    vRow = vTopRow;
+    vTopRow -= VRAM_TILES_H;
+    for (uint8_t x = 0; x < 10; x++)
+      if (y > height[p][x])
+        vRow[x] = vTopRow[x] == RAM_TILES_COUNT+ABOUT_TILE?
+          RAM_TILES_COUNT+SKY_TILE : vTopRow[x];
+      else if (y == height[p][x] && vTopRow[x] != RAM_TILES_COUNT+SKY_TILE) {
+        vRow[x] = vTopRow[x];
+        if (vRow[x] == RAM_TILES_COUNT+BLOCK_TILE) {
+          height[p][x]++;
+          vTopRow[x] = RAM_TILES_COUNT+SKY_TILE;
+        }
+      }
+  }
+
+  Fill(xOffset, yOffset, 10, 1, SKY_TILE);
+}
+
+void survival(uint8_t players) {
+  uint16_t score[2] = {0, 0};
+  bool alive[2] = {true, players > 1};
+  uint8_t cat[2] = {4, 4};
+  uint8_t lastY[2] = {23, 23};
+  int8_t height[2][10];
+  int8_t about = -1;
+  uint8_t movementDelay = MOVE_DELAY;
+  uint8_t shotDelay = SHOT_DELAY;
+  uint8_t nextMovement = movementDelay;
+  uint8_t nextShot = 2*shotDelay;
+  uint8_t fasterDelay = FASTER_DELAY;
+  uint8_t nextFaster = fasterDelay;
+  uint8_t nextBlink = BLINK_DELAY;
+  uint8_t blinkState = 0;
+
+  memset(height, 0, sizeof(height));
+
+  ClearVram();
+  for (uint8_t i = 0; i < 2; i++) {
+    Fill(3+14*i, 8, 10, 16, SKY_TILE);
+    Fill(2+14*i, 7, 12, 1, BLOCK_TILE);
+    Fill(2+14*i, 24, 12, 1, BLOCK_TILE);
+    Fill(2+14*i, 8, 1, 16, BLOCK_TILE);
+    Fill(13+14*i, 8, 1, 16, BLOCK_TILE);
+    Print(2+14*i, 6, strScore);
+  }
+
+  while (alive[0] || alive[1]) {
+    controllerStart();
+
+    if (pressed[0] & BTN_SELECT)
+      return;
+
+    if (about != -1 && !(--nextBlink)) {
+      nextBlink = BLINK_DELAY;
+      blinkState ^= 1;
+      if (alive[0])
+        SetTile(3+about, 8, blinkState? ABOUT_TILE : SKY_TILE);
+      if (alive[1])
+        SetTile(3+14+about, 8, blinkState? ABOUT_TILE : SKY_TILE);
+    }
+
+    if (!(--nextMovement)) {
+      if (!(--nextShot) && about != -1) {
+        uint8_t type = random() & 0x7;
+        if (type < 4)
+          type = BLOCK_TILE;
+        else if (type == 7)
+          type = GREEN_BALL_TILE;
+        else
+          type = RED_BALL_TILE;
+        if (alive[0])
+          SetTile(3+about, 8, type);
+        if (alive[1])
+          SetTile(3+14+about, 8, type);
+      }
+
+      for (uint8_t i = 0; i < 2; i++) {
+        if (!alive[i])
+          continue;
+
+        survivalMoveDown(i, height);
+      }
+
+      if (!nextShot) {
+        about = random() % 10;
+        blinkState = 1;
+        for (uint8_t i = 0; i < 2; i++)
+          if (alive[i])
+            SetTile(3+14*i+about, 8, ABOUT_TILE);
+
+        if (!(--nextFaster)) {
+          nextFaster = fasterDelay;
+          if (movementDelay > 4)
+            movementDelay--;
+          else if (shotDelay > 2)
+            shotDelay--;
+        }
+
+        nextShot = shotDelay;
+      }
+
+      nextMovement = movementDelay;
+    }
+
+    for (uint8_t p = 0; p < 2; p++) {
+      if (!alive[p])
+        continue;
+
+      uint8_t x = 3+14*p+cat[p];
+      uint8_t y = lastY[p];
+      uint8_t tile = vram[y*VRAM_TILES_H+x];
+
+      if (tile == RAM_TILES_COUNT+CAT_TILE)
+        SetTile(x, y, SKY_TILE);
+      else if (tile == RAM_TILES_COUNT+BLOCK_TILE) {
+        alive[p] = false;
+        SetTile(x, y+1, BLOODY_BLOCK_TILE);
+        continue;
+      }
+
+      if (pressed[p] & BTN_LEFT && cat[p])
+        cat[p]--;
+      else if (pressed[p] & BTN_RIGHT && cat[p] < 9)
+        cat[p]++;
+      
+      x = 3+14*p+cat[p];
+      y = 23-height[p][cat[p]];
+      tile = vram[y*VRAM_TILES_H+x];
+      if (tile == RAM_TILES_COUNT+RED_BALL_TILE)
+        score[p]++;
+      else if (tile == RAM_TILES_COUNT+GREEN_BALL_TILE)
+        score[p] += 3;
+      SetTile(x, y, CAT_TILE);
+
+      printColoredShort(13+14*p, 6, score[p], GREEN_NUMBER);
+
+      lastY[p] = y;
+    }
+
+    WaitVsync(1);
+    controllerEnd();
+  }
+
+  Print(11, 12, strGameOver);
+  if (players > 1) {
+    if (score[0] == score[1])
+      Print(13, 14, strDraw);
+    else {
+      Print(8, 14, strWins);
+      SetTile(15, 14, WHITE_NUMBER + (score[0] > score[1]? 1 : 2));
+    }
+  }
+  for (bool done = false; !done; ) {
+    controllerStart();
+
+    if (pressed[0] & BTN_START)
+      done = true;
+
+    WaitVsync(1);
+    controllerEnd();
+  }
+}
+
 uint8_t rainMoveDown(uint8_t player) {
   const uint8_t yOffset = 8;
   const uint8_t xOffset = player? 18 : 3;
@@ -2644,6 +2823,54 @@ int main() {
               monster(i);
               break;
             }
+
+            r++;
+            WaitVsync(1);
+            controllerEnd();
+          }
+        }
+        break;
+
+      case 6:
+        /* Rain */
+        while (1) {
+          /* Draw the menu */
+          ClearVram();
+          Print(11, 5, (const char *) pgm_read_word(names + 18 +
+              ((ret % 30) / 10)));
+          Print(12, 15, strVsCpu);
+          Print(12, 16, strVsHuman);
+          Print(12, 17, strExit);
+          SetTile(10, 15, ARROW_TILE);
+          Print(5, 21, strCFlavio);
+          Print(5, 23, strLicense);
+          Print(7, 24, strMIT);
+
+          i = 0;
+          r = 0;
+          while (1) {
+            controllerStart();
+
+            if (pressed[0] & BTN_DOWN) {
+              SetTile(10, 15 + i, 0);
+              i = (i + 1) % 3;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_UP) {
+              SetTile(10, 15 + i, 0);
+              i = (6 + i - 1) % 3;
+              SetTile(10, 15 + i, ARROW_TILE);
+            }
+            else if (pressed[0] & BTN_START) {
+              controllerEnd();
+              if (i == 2) {
+                goto beginning;
+              }
+              srandom(r);
+              survival(i+1);
+              break;
+            }
+
 
             r++;
             WaitVsync(1);
