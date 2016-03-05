@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<gfx-xform version="1">
+    <input file="marumbi.png" type="png" tile-width="8" tile-height="8"/>
+    <output file="marumbi.inc">
+	<maps pointers-size="8">
+	    <map var-name="marumbi01Map" left="6" top="0" width="6" height="5"/>
+	    <map var-name="marumbi02Map" left="12" top="0" width="6" height="5"/>
+	    <map var-name="marumbi03Map" left="18" top="0" width="6" height="5"/>
+
+	    <map var-name="marumbi04Map" left="0" top="5" width="6" height="5"/>
+	    <map var-name="marumbi05Map" left="6" top="5" width="6" height="5"/>
+	    <map var-name="marumbi06Map" left="12" top="5" width="6" height="5"/>
+	    <map var-name="marumbi07Map" left="18" top="5" width="6" height="5"/>
+
+	    <map var-name="marumbi08Map" left="0" top="10" width="6" height="5"/>
+	    <map var-name="marumbi09Map" left="6" top="10" width="6" height="5"/>
+	    <map var-name="marumbi10Map" left="12" top="10" width="6" height="5"/>
+	    <map var-name="marumbi11Map" left="18" top="10" width="6" height="5"/>
+
+	    <map var-name="marumbi12Map" left="0" top="15" width="6" height="5"/>
+	    <map var-name="marumbi13Map" left="6" top="15" width="6" height="5"/>
+	    <map var-name="marumbi14Map" left="12" top="15" width="6" height="5"/>
+	    <map var-name="marumbi15Map" left="18" top="15" width="6" height="5"/>
+	</maps>
+        <tiles var-name="marumbi"/>
+    </output>
+</gfx-xform>
