@@ -55,7 +55,7 @@ LINKONLYOBJECTS=
 INCLUDES=-I"$(KERNEL_DIR)"
 
 ## Build
-all: tileset $(TARGET) $(GAME).hex $(GAME).eep $(GAME).lss $(GAME).uze size
+all: tileset marumbi  $(TARGET) $(GAME).hex $(GAME).eep $(GAME).lss $(GAME).uze size
 
 ## Compile Kernel files
 uzeboxVideoEngineCore.o: $(KERNEL_DIR)/uzeboxVideoEngineCore.s
@@ -106,6 +106,10 @@ size: ${TARGET}
 .PHONY: tileset
 tileset:
 	cd ../data && gconvert tileset.xml
+
+.PHONY: marumbi
+marumbi:
+	cd ../data && gconvert marumbi.xml
 
 ## Clean target
 .PHONY: clean

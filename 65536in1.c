@@ -4,6 +4,7 @@
 #include <string.h>
 #include <avr/pgmspace.h>
 #include "data/tileset.inc"
+#include "data/marumbi.inc"
 #include "data/trollen.inc"
 #include "data/theone.inc"
 
@@ -39,6 +40,8 @@
 #define GOOD_CURSOR 0x80
 #define BAD_CURSOR 0x40
 #define BLINK_DELAY 4
+#define MARUMBI_BLUE 235
+#define DEFAULT_GRAY 82
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -148,6 +151,25 @@ const char * const monsterRooms[] PROGMEM = {
   corridor2Map
 };
 
+const char * const marumbiMaps[] PROGMEM = {
+  NULL,
+  marumbi01Map,
+  marumbi02Map,
+  marumbi03Map,
+  marumbi04Map,
+  marumbi05Map,
+  marumbi06Map,
+  marumbi07Map,
+  marumbi08Map,
+  marumbi09Map,
+  marumbi10Map,
+  marumbi11Map,
+  marumbi12Map,
+  marumbi13Map,
+  marumbi14Map,
+  marumbi15Map,
+};
+
 const uint32_t prizes[] PROGMEM = {
   50, 100, 500, 1000, 2500, 5000, 7500, 10000, 20000, 30000, 40000, 50000,
   75000, 100000, 500000, 1000000, 2500000, 5000000, 7500000, 10000000,
@@ -172,6 +194,7 @@ struct trollenLevel {
 };
 
 extern uint8_t vram[];
+extern char ram_tiles[];
 /* Controller Handling */
 uint16_t held[2] = {0, 0},
   pressed[2] = {0, 0},
@@ -180,6 +203,8 @@ uint16_t held[2] = {0, 0},
 
 void controllerStart();
 void controllerEnd();
+void copyTileToRam(const char *tt, uint8_t src, uint8_t dst);
+void rtReplaceColor(uint8_t t, char src, char dst);
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
@@ -232,6 +257,20 @@ void controllerStart() {
 void controllerEnd() {
   prev[0] = held[0];
   prev[1] = held[1];
+}
+
+void copyTileToRam(const char *tt, uint8_t src, uint8_t dst) {
+  const char *t = tt + 64*src;
+  char *rt = ram_tiles + 64*dst;
+  for (uint8_t i = 0; i < 64; i++)
+    rt[i] = pgm_read_byte(t+i);
+}
+
+void rtReplaceColor(uint8_t t, char src, char dst) {
+  char *rt = ram_tiles + 64*t;
+  for (uint8_t i = 0; i < 64; i++)
+    if (rt[i] == src)
+      rt[i] = dst;
 }
 
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base) {
@@ -808,23 +847,38 @@ uint8_t testSlide(uint8_t *m) {
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m) {
   m[p] = m[o];
   m[o] = 0;
-  DrawMap2((p & 3) * 6 + 3, (p >> 2) * 5 + 4, boxMap);
-  printColoredByte2((p & 3) * 6 + 6,
-    (p >> 2) * 5 + 6, m[p],
-    m[p] == p? GREEN_NUMBER : WHITE_NUMBER);
 
-  Fill((o & 3) * 6 + 3, (o >> 2) * 5 + 4, 6, 5, 0);
+  uint8_t xx = (p&3)*6+3;
+  uint8_t yy = (p>>2)*5+4;
+  uint8_t x = (o&3)*6+3;
+  uint8_t y = (o>>2)*5+4;
+
+  while (x != xx || y != yy) {
+    Fill(x, y, 6, 5, -RAM_TILES_COUNT);
+
+    if (x < xx)
+      x++;
+    else if (x > xx)
+      x--;
+    else if (y > yy)
+      y--;
+    else
+      y++;
+
+    DrawMap2(x, y, (const char *) pgm_read_word(marumbiMaps+m[p]));
+
+    WaitVsync(4);
+  }
+
 }
 
 void slide() {
   uint8_t m[16];
   uint8_t i, p;
 
-  for (i = 0; i < 16; i++) {
-    m[i] = i;
-  }
-
   /* Randomize the board */
+  for (i = 0; i < 16; i++)
+    m[i] = i;
   for (i = 0; i < 15; i++) {
     p = (random() % (16 - i)) + i;
     if (p != i) {
@@ -840,54 +894,34 @@ void slide() {
   for (p = 0; m[p]; p++);
 
   /* Draw the initial state */
-  ClearVram();
+  copyTileToRam(marumbi, 0, 0);
+  rtReplaceColor(0, MARUMBI_BLUE, DEFAULT_GRAY);
+  Fill(0, 0, VRAM_TILES_H, VRAM_TILES_V, -RAM_TILES_COUNT);
   for (i = 0; i < 16; i++) {
-    if (!m[i]) continue;
-    DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4, boxMap);
-    printColoredByte2((i & 3) * 6 + 6,
-      (i >> 2) * 5 + 6, m[i],
-      m[i] == i? GREEN_NUMBER : WHITE_NUMBER);
+    if (m[i])
+      DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4,
+        (const char *) pgm_read_word(marumbiMaps+m[i]));
   }
 
   /* Process the input */
-  while (1) {
+  while (!testSlide(m)) {
     controllerStart();
 
     if (pressed[0] & BTN_UP && (p >> 2) < 3) {
       switchSlide(p, p + 4, m);
       p += 4;
-
-      if (testSlide(m)) {
-        controllerEnd();
-        break;
-      }
     }
     else if (pressed[0] & BTN_DOWN && p >> 2) {
       switchSlide(p, p - 4, m);
       p -= 4;
-
-      if (testSlide(m)) {
-        controllerEnd();
-        break;
-      }
     }
     else if (pressed[0] & BTN_LEFT && (p & 3) < 3) {
       switchSlide(p, p + 1, m);
       p += 1;
-
-      if (testSlide(m)) {
-        controllerEnd();
-        break;
-      }
     }
     else if (pressed[0] & BTN_RIGHT && p & 3) {
       switchSlide(p, p - 1, m);
       p -= 1;
-
-      if (testSlide(m)) {
-        controllerEnd();
-        break;
-      }
     }
     else if (pressed[0] & BTN_SELECT) {
       controllerEnd();
@@ -899,15 +933,16 @@ void slide() {
   }
 
   /* Winning screen */
-  ClearVram();
-  Print(8, 12, strCongrat);
-  while (1) {
+  Fill(3, 4, 6, 5, 0);
+  for (bool done = false; !done; ) {
     controllerStart();
-    if (pressed[0] & BTN_START) break;
+
+    if (pressed[0] & BTN_START)
+      done = true;
+
     WaitVsync(1);
     controllerEnd();
   }
-  controllerEnd();
 }
 
 void theOneDrawMap(const uint8_t map[9][9]) {
@@ -2673,7 +2708,9 @@ int main() {
           r = onePlayerMenu(0, 0);
           if (r == -1)
             goto beginning;
+          SetTileTable(marumbi);
           slide();
+          SetTileTable(tileset);
           break;
 
         case 4:
