@@ -1122,7 +1122,7 @@ uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent) {
   /* Parent array for the union find structure */
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      parent[(y<<4)|x] = (y<<4)|x;
+      parent[y*CAVE_WIDTH+x] = y*CAVE_WIDTH+x;
     }
   }
 
@@ -1150,9 +1150,9 @@ uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent) {
         } while(yyxxType >= CORRIDOR);
 
         /* Don't union holes */
-        if (yyxxType != HOLE_ROOM
-            && getParent((y<<4)|x, parent) != getParent((yy<<4)|xx, parent)) {
-          parent[parent[(y<<4)|x]] = parent[(yy<<4)|xx];
+        if (yyxxType != HOLE_ROOM && getParent(
+              y*CAVE_WIDTH+x, parent) != getParent(yy*CAVE_WIDTH+xx, parent)) {
+          parent[parent[y*CAVE_WIDTH+x]] = parent[yy*CAVE_WIDTH+xx];
           unions++;
         }
       }
@@ -1207,7 +1207,7 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 }
 
 void monster() {
-  uint8_t parent[CAVE_HEIGHT * 16];
+  uint8_t parent[CAVE_HEIGHT * CAVE_WIDTH];
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
   const uint8_t dx[] = {0, 1, 0, 255};
