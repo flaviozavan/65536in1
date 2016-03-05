@@ -5,6 +5,7 @@
 #include <avr/pgmspace.h>
 #include "data/tileset.inc"
 #include "data/trollen.inc"
+#include "data/theone.inc"
 
 #define WHITE_NUMBER 16
 #define BLUE_NUMBER 64
@@ -190,10 +191,11 @@ void rich();
 uint8_t testSlide(uint8_t *m);
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m);
 void slide();
-void theOneDrawMap(const uint8_t map[7][7]);
+void theOneDrawMap(const uint8_t map[9][9]);
 bool theOneIsHoleGood(struct int8_t_pair peg, struct int8_t_pair hole,
-    const uint8_t map[7][7]);
-void theOne();
+    const uint8_t map[9][9]);
+uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]);
+void theOne(uint8_t boardId);
 uint8_t getParent(uint8_t v, uint8_t *parent);
 uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
@@ -908,12 +910,12 @@ void slide() {
   controllerEnd();
 }
 
-void theOneDrawMap(const uint8_t map[7][7]) {
-  for (uint8_t i = 0; i < 7; i++)
-    for (uint8_t j = 0; j < 7; j++) {
+void theOneDrawMap(const uint8_t map[9][9]) {
+  for (uint8_t i = 0; i < 9; i++)
+    for (uint8_t j = 0; j < 9; j++) {
       if (map[i][j] == OUTSIDE)
         continue;
-      DrawMap2(5+3*j, 7+i*2,
+      DrawMap2(2+3*j, 5+i*2,
           (map[i][j] & 0xf) == HOLE?
           (map[i][j] & GOOD_CURSOR?
              goodPegHoleMap : (map[i][j] & BAD_CURSOR?
@@ -925,7 +927,7 @@ void theOneDrawMap(const uint8_t map[7][7]) {
 }
 
 bool theOneIsHoleGood(struct int8_t_pair peg, struct int8_t_pair hole,
-    const uint8_t map[7][7]) {
+    const uint8_t map[9][9]) {
   if ((peg.x != hole.x && peg.y != hole.y)
       || (abs(peg.x-hole.x) + abs(peg.y-hole.y) != 2))
     return false;
@@ -942,20 +944,31 @@ bool theOneIsHoleGood(struct int8_t_pair peg, struct int8_t_pair hole,
   return true;
 }
 
-void theOne() {
-  uint8_t map[7][7];
-  uint8_t pegs = 32;
-  struct int8_t_pair nc, peg, hole, c = (struct int8_t_pair) {3, 3};
+uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]) {
+  uint8_t pegs = 0;
+  const uint8_t *b = theOneBoards[id];
 
-  memset(map, PEG, sizeof(map));
+  /* The last element is not stored, it's always outside and would cost an
+   * extra byte for each board */
+  map[8][8] = OUTSIDE;
+  for (uint8_t i = 0; i < (9*9)-1; i++) {
+    if (i && !(i % 8))
+      b++;
+    map[i/9][i%9] = (pgm_read_byte(b) >> (7-(i%8))) & 1? 0 : OUTSIDE;
+    if (map[i/9][i%9] != OUTSIDE)
+      pegs++;
+  }
+  map[4][4] = HOLE;
 
-  map[0][0] = map[0][1] = map[1][0] = map[1][1] = OUTSIDE;
-  map[0][5] = map[0][6] = map[1][5] = map[1][6] = OUTSIDE;
-  map[5][0] = map[5][1] = map[6][0] = map[6][1] = OUTSIDE;
-  map[5][5] = map[5][6] = map[6][5] = map[6][6] = OUTSIDE;
-  map[3][3] = HOLE;
+  return pegs;
+}
+
+void theOne(uint8_t boardId) {
+  uint8_t map[9][9];
+  uint8_t pegs = theOneLoadBoard(boardId, map);
+  struct int8_t_pair nc, peg, hole, c = (struct int8_t_pair) {4, 4};
+
   map[c.y][c.x] |= BAD_CURSOR;
-
   ClearVram();
 
   while (pegs > 1) {
@@ -979,7 +992,7 @@ void theOne() {
         nc.x--;
 
       if ((nc.x != c.x || nc.y != c.y)) {
-        if (nc.x >= 0 && nc.x < 7 && nc.y >= 0 && nc.y < 7
+        if (nc.x >= 0 && nc.x < 9 && nc.y >= 0 && nc.y < 9
             && map[nc.y][nc.x] != OUTSIDE) {
           map[c.y][c.x] &= 0xf;
           map[nc.y][nc.x] |= (map[nc.y][nc.x] == HOLE?
@@ -1024,7 +1037,7 @@ void theOne() {
         break;
 
       if ((nc.x != c.x || nc.y != c.y)) {
-        if (nc.x >= 0 && nc.x < 7 && nc.y >= 0 && nc.y < 7
+        if (nc.x >= 0 && nc.x < 9 && nc.y >= 0 && nc.y < 9
             && (nc.x != peg.x || nc.y != peg.y)
             && map[nc.y][nc.x] != OUTSIDE) {
           map[c.y][c.x] &= 0xf;
@@ -2665,10 +2678,10 @@ int main() {
 
         case 4:
           /* The One */
-          r = onePlayerMenu(0, 0);
+          r = onePlayerMenu(0, NUM_THE_ONE_BOARDS);
           if (r == -1)
             goto beginning;
-          theOne();
+          theOne(r);
           break;
 
         case 5:
