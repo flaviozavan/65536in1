@@ -46,8 +46,11 @@
 #define DEFAULT_GRAY 82
 #define RED_6 6
 #define RED_7 7
+#define BROWN 20
 #define BLUE_3 (3 << 6)
+#define GREEN_6 (6 << 3)
 #define TOTAL_CHESTS 26
+#define LIMIT_COLOR 126
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -249,6 +252,7 @@ bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]);
 void survival(uint8_t players);
 void rain(uint8_t human);
 void sort(uint8_t human);
+void trollenLoadBaseTiles();
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
 void trollenDrawLevel(const struct trollenLevel *level);
 uint8_t trollen(uint8_t level);
@@ -2196,6 +2200,45 @@ void sort(uint8_t human) {
   controllerEnd();
 }
 
+void trollenLoadBaseTiles() {
+  uint8_t i;
+  uint8_t sides[] = {1, 4, 8, 2, 1|8, 4|8, 4|2, 1|2};
+
+  for (i = 0; i < 8; i++) {
+    copyTileToRam(tileset, FLASH_NO_TILE, i);
+    copyTileToRam(tileset, FLASH_NO_TILE, 8+i);
+
+    if (sides[i] & 1) {
+      rtDrawRectangle(i, 0, 0, 8, 4, BROWN);
+      if (i < 4)
+        rtDrawRectangle(8+i, 0, 0, 8, 1, LIMIT_COLOR);
+    }
+    if (sides[i] & 2) {
+      rtDrawRectangle(i, 4, 0, 4, 8, BROWN);
+      if (i < 4)
+        rtDrawRectangle(8+i, 7, 0, 1, 8, LIMIT_COLOR);
+    }
+    if (sides[i] & 4) {
+      rtDrawRectangle(i, 0, 4, 8, 4, BROWN);
+      if (i < 4)
+        rtDrawRectangle(8+i, 0, 7, 8, 1, LIMIT_COLOR);
+    }
+    if (sides[i] & 8) {
+      rtDrawRectangle(i, 0, 0, 4, 8, BROWN);
+      if (i < 4)
+        rtDrawRectangle(8+i, 0, 0, 1, 8, LIMIT_COLOR);
+    }
+  }
+
+  copyTileToRam(tileset, FLASH_NO_TILE, NO_TILE+RAM_TILES_COUNT);
+  rtDrawRectangle(GRASS_TILE+RAM_TILES_COUNT, 0, 0, 8, 8, GREEN_6);
+
+  copyTileToRam(tileset, FLASH_SYMBOL_0, SYMBOL_0+RAM_TILES_COUNT);
+  copyTileToRam(tileset, FLASH_SYMBOL_1, SYMBOL_1+RAM_TILES_COUNT);
+  copyTileToRam(tileset, FLASH_SYMBOL_2, SYMBOL_2+RAM_TILES_COUNT);
+  copyTileToRam(tileset, FLASH_SYMBOL_3, SYMBOL_3+RAM_TILES_COUNT);
+}
+
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level) {
   uint8_t i, t, b, o, x, y;
   uint8_t l[13];
@@ -2294,31 +2337,31 @@ void trollenDrawLevel(const struct trollenLevel *level) {
             (level->map[i][j] & LEFT_WALL? TL_TILE : T_TILE)
             : (level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE));
 
-      SetTile(x+1, y, level->map[i][j] & TOP_WALL? T_TILE : NO_TILE);
-      SetTile(x+2, y, level->map[i][j] & TOP_WALL? T_TILE : NO_TILE);
+      SetTile(x+1, y, level->map[i][j] & TOP_WALL? T_TILE : NO_T_TILE);
+      SetTile(x+2, y, level->map[i][j] & TOP_WALL? T_TILE : NO_T_TILE);
 
       SetTile(x+3, y,
           level->map[i][j] & TOP_WALL?
             (level->map[i][j] & RIGHT_WALL? TR_TILE : T_TILE)
             : (level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE));
 
-      SetTile(x, y+1, level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE);
+      SetTile(x, y+1, level->map[i][j] & LEFT_WALL? L_TILE : NO_L_TILE);
       SetTile(x+1, y+1, NO_TILE);
       SetTile(x+2, y+1, NO_TILE);
-      SetTile(x+3, y+1, level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE);
+      SetTile(x+3, y+1, level->map[i][j] & RIGHT_WALL? R_TILE : NO_R_TILE);
 
-      SetTile(x, y+2, level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE);
+      SetTile(x, y+2, level->map[i][j] & LEFT_WALL? L_TILE : NO_L_TILE);
       SetTile(x+1, y+2, NO_TILE);
       SetTile(x+2, y+2, NO_TILE);
-      SetTile(x+3, y+2, level->map[i][j] & RIGHT_WALL? R_TILE : NO_TILE);
+      SetTile(x+3, y+2, level->map[i][j] & RIGHT_WALL? R_TILE : NO_R_TILE);
 
       SetTile(x, y+3,
           level->map[i][j] & BOTTOM_WALL?
             (level->map[i][j] & LEFT_WALL? BL_TILE : B_TILE)
             : (level->map[i][j] & LEFT_WALL? L_TILE : NO_TILE));
 
-      SetTile(x+1, y+3, level->map[i][j] & BOTTOM_WALL? B_TILE : NO_TILE);
-      SetTile(x+2, y+3, level->map[i][j] & BOTTOM_WALL? B_TILE : NO_TILE);
+      SetTile(x+1, y+3, level->map[i][j] & BOTTOM_WALL? B_TILE : NO_B_TILE);
+      SetTile(x+2, y+3, level->map[i][j] & BOTTOM_WALL? B_TILE : NO_B_TILE);
 
       SetTile(x+3, y+3,
           level->map[i][j] & BOTTOM_WALL?
@@ -2753,7 +2796,11 @@ int main() {
 
         case 2:
           /* Trollen */
-          DrawMap2(11, 8, trollenTitleMap);
+          trollenLoadBaseTiles();
+          DrawMap2(11, 8, trollBoxMap);
+          DrawMap2(12, 9, hTrollMap);
+          DrawMap2(15, 8, trollBoxMap);
+          DrawMap2(16, 9, vTrollMap);
 
           r = onePlayerMenu(trollenLevel, NUM_TROLLEN_LEVELS);
           if (r == -1)

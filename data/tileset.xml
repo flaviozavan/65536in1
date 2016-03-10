@@ -12,15 +12,11 @@
           <define def-name="NON_FIRE_TILE" left="1" top="11"/>
           <define def-name="FIRE_TILE" left="2" top="11"/>
           <define def-name="CRACK_TILE" left="3" top="11"/>
-          <define def-name="T_TILE" left="0" top="13"/>
-          <define def-name="B_TILE" left="1" top="13"/>
-          <define def-name="L_TILE" left="2" top="13"/>
-          <define def-name="R_TILE" left="3" top="13"/>
-          <define def-name="TL_TILE" left="4" top="13"/>
-          <define def-name="BL_TILE" left="5" top="13"/>
-          <define def-name="BR_TILE" left="6" top="13"/>
-          <define def-name="TR_TILE" left="7" top="13"/>
-          <define def-name="NO_TILE" left="8" top="13"/>
+          <define def-name="FLASH_NO_TILE" left="8" top="13"/>
+          <define def-name="FLASH_SYMBOL_0" left="9" top="13"/>
+          <define def-name="FLASH_SYMBOL_1" left="10" top="13"/>
+          <define def-name="FLASH_SYMBOL_2" left="9" top="14"/>
+          <define def-name="FLASH_SYMBOL_3" left="10" top="14"/>
           <define def-name="ABOUT_TILE" left="2" top="20"/>
           <define def-name="CAT_TILE" left="0" top="21"/>
           <define def-name="RED_BALL_TILE" left="1" top="21"/>
@@ -80,8 +76,6 @@
                 left="1" top="10" width="1" height="2"/>
 
             <!-- Trollen -->
-            <map var-name="symbolMap" left="9" top="13"
-                width="2" height="2"/>
             <map var-name="trollGuyMap" left="11" top="13"
                 width="2" height="2"/>
             <map var-name="hTrollMap" left="13" top="13"
@@ -94,8 +88,6 @@
                 width="2" height="2"/>
             <map var-name="sTrollMap" left="21" top="13"
                 width="2" height="2"/>
-            <map var-name="trollenTitleMap" left="0" top="14"
-                width="8" height="4"/>
 
             <!-- The One -->
             <map var-name="badPegMap" left="2" top="18" width="1" height="2"/>
