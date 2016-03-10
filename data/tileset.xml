@@ -34,11 +34,6 @@
 
             <!-- Greed -->
             <map var-name="battery0Map" left="0" top="7" width="3" height="2"/>
-            <map var-name="battery1Map" left="3" top="7" width="3" height="2"/>
-            <map var-name="battery2Map" left="6" top="7" width="3" height="2"/>
-            <map var-name="battery3Map" left="9" top="7" width="3" height="2"/>
-            <map var-name="battery4Map" left="12" top="7"
-                width="3" height="2"/>
 
             <!-- Rich -->
             <map var-name="closedChestMap"

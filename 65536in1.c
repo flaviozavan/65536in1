@@ -4,6 +4,7 @@
 #include <string.h>
 #include <avr/pgmspace.h>
 #include "data/tileset.inc"
+#include "data/rtmaps.inc"
 #include "data/marumbi.inc"
 #include "data/trollen.inc"
 #include "data/theone.inc"
@@ -215,6 +216,7 @@ void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
 void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base);
+void greedLoadBatteryTiles();
 void greed(uint8_t human);
 uint8_t rainMoveDown(uint8_t player);
 void rainShoot(uint8_t player, uint8_t key);
@@ -334,6 +336,17 @@ void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base) {
   }
 
   SetTile(x, y, '$' - ' ');
+}
+
+void greedLoadBatteryTiles() {
+  uint8_t i, j;
+  uint8_t newColors[] = {72, 67, 19, 236};
+
+  for (i = 0; i < 4; i++)
+    for (j = 0; j < 6; j++) {
+      copyTileToRam(tileset, pgm_read_byte(battery0Map+2+j), 6*i+j);
+      rtReplaceColor(6*i+j, 24, newColors[i]);
+    }
 }
 
 void greed(uint8_t human) {
@@ -2682,12 +2695,12 @@ int main() {
       switch(game % 10) {
         case 0:
           /* Greed */
-          DrawMap2(9, 7, (const char *) pgm_read_word(batteries +
-            (game % 30) / 10));
-          DrawMap2(13, 7, (const char *) pgm_read_word(batteries +
-            (game % 30) / 10));
-          DrawMap2(17, 7, (const char *) pgm_read_word(batteries +
-            (game % 30) / 10));
+          greedLoadBatteryTiles();
+          DrawMap2(9, 7, (const char *) pgm_read_word(batteries + random()%5));
+          DrawMap2(13, 7,
+              (const char *) pgm_read_word(batteries + random()%5));
+          DrawMap2(17, 7,
+              (const char *) pgm_read_word(batteries + random()%5));
 
           r = twoPlayersMenu();
           if (r == 2)
