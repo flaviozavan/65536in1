@@ -11,6 +11,7 @@
 #define WHITE_NUMBER 16
 #define BLUE_NUMBER 64
 #define GREEN_NUMBER 74
+#define CROSSED_OUT_NUMBER (-RAM_TILES_COUNT)
 #define CPU_DELAY 30
 #define STENCH_ROOM 1
 #define BREEZE_ROOM 2
@@ -42,6 +43,8 @@
 #define BLINK_DELAY 4
 #define MARUMBI_BLUE 235
 #define DEFAULT_GRAY 82
+#define RED_6 6
+#define TOTAL_CHESTS 26
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -94,7 +97,8 @@ const char strMIT[] PROGMEM = "THE MIT LICENSE";
 const char strTurn[] PROGMEM = "PLAYER  'S TURN";
 const char strWins[] PROGMEM = "PLAYER   WINS";
 const char strStart[] PROGMEM = "START";
-const char strStarting[] PROGMEM = "PICK THE STARTING CHEST";
+const char strStarting[] PROGMEM = "PICK YOUR CHEST";
+const char strOpenChest[] PROGMEM = "OPEN A CHEST";
 const char strSee[] PROGMEM = "LET'S SEE WHAT";
 const char strInside[] PROGMEM = "WAS INSIDE THE CHEST";
 const char strPhone[] PROGMEM = "THE PHONE IS RINGING";
@@ -106,7 +110,7 @@ const char strRefuse[] PROGMEM = "REFUSE";
 const char strReceived[] PROGMEM = "YOU RECEIVED";
 const char strCongratulations[] PROGMEM = "CONGRATULATIONS,";
 const char strWantKeep[] PROGMEM = "DO YOU WANT TO KEEP";
-const char strChestNo[] PROGMEM = "CHEST  OR DO YOU";
+const char strChestNo[] PROGMEM = "CHEST    OR DO YOU";
 const char strTradeChest[] PROGMEM = "TRADE IT FOR CHEST   ?";
 const char strKeep[] PROGMEM = "KEEP";
 const char strTrade[] PROGMEM = "TRADE";
@@ -205,6 +209,8 @@ void controllerStart();
 void controllerEnd();
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst);
 void rtReplaceColor(uint8_t t, char src, char dst);
+void rtDrawRectangle(uint8_t t, uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+    uint8_t color);
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
@@ -212,6 +218,7 @@ void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base);
 void greed(uint8_t human);
 uint8_t rainMoveDown(uint8_t player);
 void rainShoot(uint8_t player, uint8_t key);
+void richDrawStatus(bool *available, uint8_t *order, uint8_t startingChest);
 void rich();
 uint8_t testSlide(uint8_t *m);
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m);
@@ -271,6 +278,17 @@ void rtReplaceColor(uint8_t t, char src, char dst) {
   for (uint8_t i = 0; i < 64; i++)
     if (rt[i] == src)
       rt[i] = dst;
+}
+
+void rtDrawRectangle(uint8_t t, uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+    uint8_t color) {
+  uint8_t i;
+  uint8_t j;
+  char *rt = ram_tiles+64*t+8*y;
+
+  for (i = 0; i < h; i++, rt+=8)
+    for (j = 0; j < w; j++)
+      rt[x+j] = color;
 }
 
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base) {
@@ -516,15 +534,14 @@ void greed(uint8_t human) {
   }
 }
 
-void printChests(uint8_t *available) {
+void printChests(bool *available) {
   uint8_t y, x, i;
 
   x = 3;
   y = 4;
-  for (i = 0; i < 26; i++) {
-    if (!available[i]) {
+  for (i = 0; i < TOTAL_CHESTS; i++) {
+    if (!available[i])
       continue;
-    }
 
     DrawMap2(x, y, closedChestMap);
     printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
@@ -537,21 +554,41 @@ void printChests(uint8_t *available) {
   }
 }
 
+void richDrawStatus(bool *available, uint8_t *order, uint8_t startingChest) {
+  uint8_t i;
+  uint8_t revOrder[TOTAL_CHESTS];
+  for (i = 0; i < TOTAL_CHESTS; i++) {
+    revOrder[order[i]] = i;
+  }
+
+  for (i = 0; i < TOTAL_CHESTS; i++) {
+    printMoney(i < TOTAL_CHESTS/2? 10 : 26, 1+2*(i%(TOTAL_CHESTS/2)),
+        pgm_read_dword(prizes+i),
+        revOrder[i] == startingChest || available[revOrder[i]]?
+        WHITE_NUMBER : CROSSED_OUT_NUMBER);
+  }
+}
+
 void rich() {
   uint8_t i, n, s, left;
-  uint8_t y, x;
   uint32_t r;
-  uint8_t available[27];
-  uint8_t order[26];
+  bool available[TOTAL_CHESTS];
+  uint8_t order[TOTAL_CHESTS];
+  uint8_t screenChest[TOTAL_CHESTS];
   memset(available, 1, sizeof(available));
-  for (i = 0; i < 26; i++) {
+  for (i = 0; i < 26; i++)
     order[i] = i;
+
+  /* Generate crossed-out numbers */
+  for (i = 0; i < 10; i++) {
+    copyTileToRam(tileset, WHITE_NUMBER+i, i);
+    rtDrawRectangle(i, 0, 3, 8, 2, RED_6);
   }
+  SetTile(0, 0, -RAM_TILES_COUNT);
 
   /* Randomize */
   for (i = 0; i < 26; i++) {
     n = (random() % (26 - i)) + i;
-
     s = order[i];
     order[i] = order[n];
     order[n] = s;
@@ -560,99 +597,71 @@ void rich() {
   /* Select the starting chest */
   s = 0;
   ClearVram();
-  Print(4, 6, strStarting);
+  Print(7, 6, strStarting);
   DrawMap2(13, 12, closedChestMap);
-  printColoredByte2(15, 13, 0, GREEN_NUMBER);
-  while (1) {
+  for (bool done = false; !done; ) {
     controllerStart();
 
-    if (pressed[0] & BTN_DOWN || pressed[0] & BTN_LEFT) {
-      s = (25 + s) % 26;
-      printColoredByte2(15, 13, s, GREEN_NUMBER);
-    }
-    else if (pressed[0] & BTN_UP || pressed[0] & BTN_RIGHT) {
-      s = (s + 1) % 26;
-      printColoredByte2(15, 13, s, GREEN_NUMBER);
-    }
-    else if (pressed[0] & BTN_A) {
-      available[s] = 0;
-      controllerEnd();
-      break;
-    }
+    if (pressed[0] & BTN_LEFT)
+      s = (TOTAL_CHESTS - 1+ s) % TOTAL_CHESTS;
+    else if (pressed[0] & BTN_RIGHT)
+      s = (s + 1) % TOTAL_CHESTS;
+    else if (pressed[0] & BTN_SELECT)
+      return;
+    else if (pressed[0] & BTN_A)
+      done = true;
+
+    printColoredByte2(15, 13, s, GREEN_NUMBER);
 
     WaitVsync(1);
     controllerEnd();
   }
+  available[s] = 0;
 
   left = 25;
   r = 0;
 
   /* Play */
-  while (1) {
+  while (left) {
     /* Pick a chest */
     ClearVram();
+    Print(9, 2, strOpenChest);
     printChests(available);
 
-    for (i = 0; !available[i]; i++);
-    printColoredByte2(5, 5, i, BLUE_NUMBER);
-    x = 3;
-    y = 4;
-    while (1) {
+    n = 0;
+    for (i = 0; i < TOTAL_CHESTS; i++) {
+      if (!available[i])
+        continue;
+      screenChest[n++] = i;
+    }
+
+    i = 0;
+    for (bool done = false; !done; ) {
       controllerStart();
 
-      if (pressed[0] & BTN_RIGHT) {
-        printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
+      printColoredByte2(5+5*(i%5), 5+4*(i/5), screenChest[i], WHITE_NUMBER);
 
-        /* The array is 27 elements long, and 26 is always one */
-        for (i = i + 1; !available[i]; i++);
-        if (i == 26) {
-          for (i = 0; !available[i]; i++);
-          x = 3;
-          y = 4;
-        }
-        else {
-          x += 5;
-          if (x > 23) {
-            x = 3;
-            y += 4;
-          }
-        }
-
-        printColoredByte2(x + 2, y + 1, i, BLUE_NUMBER);
-      }
-      else if (pressed[0] & BTN_LEFT) {
-        printColoredByte2(x + 2, y + 1, i, WHITE_NUMBER);
-
-        for (i = i - 1; !available[i] && i < 255; i--);
-        if (i == 255) {
-          for (i = 25; !available[i]; i--);
-          x = 3 + ((left - 1) % 5) * 5;
-          y = 4 + ((left - 1) / 5) * 4;
-        }
-        else {
-          x -= 5;
-          if (x > 23) {
-            x = 23;
-            y -= 4;
-          }
-        }
-
-        printColoredByte2(x + 2, y + 1, i, BLUE_NUMBER);
-      }
-      else if (pressed[0] & BTN_A) {
-        controllerEnd();
-        break;
-      }
-      else if (pressed[0] & BTN_SELECT) {
-        controllerEnd();
+      if (pressed[0] & BTN_RIGHT && i < left-1)
+        i++;
+      else if (pressed[0] & BTN_LEFT && i > 0)
+        i--;
+      else if (pressed[0] & BTN_UP && i >= 5)
+        i -= 5;
+      else if (pressed[0] & BTN_DOWN && i < left-5)
+        i += 5;
+      else if (pressed[0] & BTN_A)
+        done = true;
+      else if (pressed[0] & BTN_SELECT)
         return;
-      }
+
+      printColoredByte2(5+5*(i%5), 5+4*(i/5), screenChest[i], BLUE_NUMBER);
 
       WaitVsync(1);
       controllerEnd();
     }
 
     /* Open the chest */
+    i = screenChest[i];
     left--;
     available[i] = 0;
 
@@ -660,19 +669,31 @@ void rich() {
     Print(8, 5, strSee);
     Print(5, 6, strInside);
     DrawMap2(13, 12, closedChestMap);
-
     WaitVsync(60);
-
     DrawMap2(13, 12, openChestMap);
     printMoney(19, 10, pgm_read_dword(prizes + order[i]), WHITE_NUMBER);
 
-    /* Wait for the input */
-    while (1) {
+    for (bool done = false; !done; ) {
+      controllerStart();
+
+      if (pressed[0] & BTN_A)
+        done = true;
+      else if (pressed[0] & BTN_SELECT)
+        return;
+
+      WaitVsync(1);
+      controllerEnd();
+    }
+
+    /* Show status */
+    ClearVram();
+    richDrawStatus(available, order, s);
+    WaitVsync(30);
+    for (bool done = false; !done; ) {
       controllerStart();
 
       if (pressed[0] & BTN_A) {
-        controllerEnd();
-        break;
+        done = true;
       }
       else if (pressed[0] & BTN_SELECT) {
         controllerEnd();
@@ -706,119 +727,110 @@ void rich() {
       SetTile(10, 15, ARROW_TILE);
 
       n = 0;
-      while (1) {
+      for (bool done = false; !done; ) {
         controllerStart();
 
-        if (pressed[0] & BTN_A) {
-          if (n) {
-            s ^= i;
-            i ^= s;
-            s ^= i;
-          }
-
-          r = pgm_read_dword(prizes + order[s]);
-
-          /* Animate the opening */
-          ClearVram();
-          Print(8, 5, strSee);
-          Print(5, 6, strInsideDef);
-          printColoredByte2(23, 6, i, WHITE_NUMBER);
-          DrawMap2(13, 12, closedChestMap);
-
-          WaitVsync(60);
-
-          DrawMap2(13, 12, openChestMap);
-          printMoney(19, 10, pgm_read_dword(prizes + order[i]),
-            WHITE_NUMBER);
-
-          /* Wait for the input */
-          while (1) {
-            controllerStart();
-
-            if (pressed[0] & BTN_A) {
-              controllerEnd();
-              break;
-            }
-
-            WaitVsync(1);
-            controllerEnd();
-          }
-          break;
-        }
+        if (pressed[0] & BTN_A)
+          done = true;
         else if (pressed[0] & BTN_DOWN || pressed[0] & BTN_UP) {
           SetTile(10, 15 + n, 0);
           n ^= 1;
           SetTile(10, 15 + n, ARROW_TILE);
         }
-        else if (pressed[0] & BTN_SELECT) {
-          controllerEnd();
+        else if (pressed[0] & BTN_SELECT)
           return;
-        }
 
         WaitVsync(1);
         controllerEnd();
       }
 
-      goto rich_ending;
-    }
+      if (n) {
+        s ^= i;
+        i ^= s;
+        s ^= i;
+      }
+      r = pgm_read_dword(prizes + order[s]);
+      left--;
 
-    /* Calculate the average */
-    r = 0;
-    n = 0;
-    for (i = 0; i < 26; i++) {
-      if (available[i] || i == s) {
-        r += pgm_read_dword(prizes + order[i]);
-        n++;
+      /* Animate the opening */
+      ClearVram();
+      Print(8, 5, strSee);
+      Print(5, 6, strInsideDef);
+      printColoredByte2(23, 6, i, WHITE_NUMBER);
+      DrawMap2(13, 12, closedChestMap);
+
+      WaitVsync(60);
+
+      DrawMap2(13, 12, openChestMap);
+      printMoney(19, 10, pgm_read_dword(prizes + order[i]),
+        WHITE_NUMBER);
+
+      /* Wait for the input */
+      for (bool done = false; !done; ) {
+        controllerStart();
+
+        if (pressed[0] & BTN_A)
+          done = true;
+        else if (pressed[0] & BTN_SELECT)
+          return;
+
+        WaitVsync(1);
+        controllerEnd();
       }
     }
-    r /= (uint32_t) n;
-
-    /* Banker animation */
-    ClearVram();
-    DrawMap2(13, 13, phoneMap);
-    WaitVsync(60);
-    Print(6, 4, strPhone);
-    WaitVsync(60);
-    Print(8, 5, strBanker);
-    WaitVsync(60);
-    Print(7, 7, strOffer);
-    WaitVsync(60);
-    printMoney(20, 8, r, WHITE_NUMBER);
-    Print(8, 9, strFor);
-    WaitVsync(60);
-    Print(12, 18, strAccept);
-    Print(12, 19, strRefuse);
-    SetTile(10, 18, ARROW_TILE);
-
-    /* Read the input */
-    i = 0;
-    while (1) {
-      controllerStart();
-
-      if (pressed[0] & BTN_A) {
-        controllerEnd();
-
-        if (!i) {
-          goto rich_ending;
+    else {
+      /* Calculate the average */
+      r = 0;
+      n = 0;
+      for (i = 0; i < 26; i++) {
+        if (available[i] || i == s) {
+          r += pgm_read_dword(prizes + order[i]);
+          n++;
         }
-        break;
       }
-      else if (pressed[0] & BTN_UP || pressed[0] & BTN_DOWN) {
-        SetTile(10, 18 + i, 0);
-        i ^= 1;
-        SetTile(10, 18 + i, ARROW_TILE);
-      }
-      else if (pressed[0] & BTN_SELECT) {
-        controllerEnd();
-        return;
-      }
+      r /= (uint32_t) n;
 
-      WaitVsync(1);
-      controllerEnd();
+      /* Banker animation */
+      ClearVram();
+      DrawMap2(13, 13, phoneMap);
+      WaitVsync(60);
+      Print(6, 4, strPhone);
+      WaitVsync(60);
+      Print(8, 5, strBanker);
+      WaitVsync(60);
+      Print(7, 7, strOffer);
+      WaitVsync(60);
+      printMoney(20, 8, r, WHITE_NUMBER);
+      Print(8, 9, strFor);
+      WaitVsync(60);
+      Print(12, 18, strAccept);
+      Print(12, 19, strRefuse);
+      SetTile(10, 18, ARROW_TILE);
+
+      /* Read the input */
+      i = 0;
+      for (bool done = false; !done; ) {
+        controllerStart();
+
+        if (pressed[0] & BTN_A) {
+          done = true;
+          if (!i)
+            left = 0;
+        }
+        else if (pressed[0] & BTN_UP || pressed[0] & BTN_DOWN) {
+          SetTile(10, 18 + i, 0);
+          i ^= 1;
+          SetTile(10, 18 + i, ARROW_TILE);
+        }
+        else if (pressed[0] & BTN_SELECT)
+          return;
+
+        WaitVsync(1);
+        controllerEnd();
+      }
     }
   }
 
-  rich_ending:
   ClearVram();
   Print(8, 6, strCongratulations);
   Print(10, 7, strReceived);
@@ -854,7 +866,7 @@ void switchSlide(uint8_t p, uint8_t o, uint8_t *m) {
   uint8_t y = (o>>2)*5+4;
 
   while (x != xx || y != yy) {
-    Fill(x, y, 6, 5, -RAM_TILES_COUNT);
+    Fill(x, y, 6, 5, RAM_TILES_COUNT);
 
     if (x < xx)
       x++;
