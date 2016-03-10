@@ -935,10 +935,8 @@ void slide() {
       switchSlide(p, p - 1, m);
       p -= 1;
     }
-    else if (pressed[0] & BTN_SELECT) {
-      controllerEnd();
+    else if (pressed[0] & BTN_SELECT)
       return;
-    }
 
     WaitVsync(1);
     controllerEnd();
@@ -2786,6 +2784,7 @@ int main() {
         default:
           goto beginning;
       }
+      controllerEnd();
     }
   }
 
