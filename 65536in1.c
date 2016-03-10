@@ -2820,7 +2820,7 @@ int main() {
 
         case 4:
           /* The One */
-	  theOneLoadTiles();
+          theOneLoadTiles();
           r = onePlayerMenu(0, NUM_THE_ONE_BOARDS);
           if (r == -1)
             goto beginning;
