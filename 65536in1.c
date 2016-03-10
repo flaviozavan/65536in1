@@ -45,6 +45,8 @@
 #define MARUMBI_BLUE 235
 #define DEFAULT_GRAY 82
 #define RED_6 6
+#define RED_7 7
+#define BLUE_3 (3 << 6)
 #define TOTAL_CHESTS 26
 
 const char strGreed[] PROGMEM = "GREED";
@@ -225,10 +227,13 @@ void rich();
 uint8_t testSlide(uint8_t *m);
 void switchSlide(uint8_t p, uint8_t o, uint8_t *m);
 void slide();
+void theOneLoadTiles();
 void theOneDrawMap(const uint8_t map[9][9]);
 bool theOneIsHoleGood(struct int8_t_pair peg, struct int8_t_pair hole,
     const uint8_t map[9][9]);
 uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]);
+bool theOneGetPossibleMove(uint8_t map[9][9], struct int8_t_pair peg,
+    struct int8_t_pair *move);
 void theOne(uint8_t boardId);
 uint8_t getParent(uint8_t v, uint8_t *parent);
 uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent);
@@ -968,6 +973,22 @@ void slide() {
   }
 }
 
+void theOneLoadTiles() {
+  uint8_t i, j;
+  uint8_t newColors[] = {DEFAULT_GRAY, BLUE_3};
+
+  for (i = 0; i < 2; i++) {
+    for (j = 0; j < 2; j++) {
+      copyTileToRam(tileset, pgm_read_byte(badPegMap+2+j), 2*i+j);
+      rtReplaceColor(2*i+j, RED_7, newColors[i]);
+    }
+    for (j = 0; j < 2; j++) {
+      copyTileToRam(tileset, pgm_read_byte(badPegHoleMap+2+j), 2*(i+2)+j);
+      rtReplaceColor(2*(i+2)+j, RED_7, newColors[i]);
+    }
+  }
+}
+
 void theOneDrawMap(const uint8_t map[9][9]) {
   for (uint8_t i = 0; i < 9; i++)
     for (uint8_t j = 0; j < 9; j++) {
@@ -1012,7 +1033,7 @@ uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]) {
   for (uint8_t i = 0; i < (9*9)-1; i++) {
     if (i && !(i % 8))
       b++;
-    map[i/9][i%9] = (pgm_read_byte(b) >> (7-(i%8))) & 1? 0 : OUTSIDE;
+    map[i/9][i%9] = (pgm_read_byte(b) >> (7-(i%8))) & 1? PEG : OUTSIDE;
     if (map[i/9][i%9] != OUTSIDE)
       pegs++;
   }
@@ -1021,10 +1042,26 @@ uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]) {
   return pegs;
 }
 
+bool theOneGetPossibleMove(uint8_t map[9][9], struct int8_t_pair peg,
+    struct int8_t_pair *move) {
+  struct int8_t_pair hole;
+
+  for (hole.y = 0; hole.y < 9; hole.y++)
+    for (hole.x = 0; hole.x < 9; hole.x++)
+      if ((map[hole.y][hole.x] & 0xf) == HOLE
+          && theOneIsHoleGood(peg, hole, map)) {
+        *move = hole;
+        return true;
+      }
+
+  return false;
+}
+
 void theOne(uint8_t boardId) {
   uint8_t map[9][9];
   uint8_t pegs = theOneLoadBoard(boardId, map);
-  struct int8_t_pair nc, peg, hole, c = (struct int8_t_pair) {4, 4};
+  struct int8_t_pair nc, peg, hole, possibleMove;
+  struct int8_t_pair c = (struct int8_t_pair) {4, 4};
 
   map[c.y][c.x] |= BAD_CURSOR;
   ClearVram();
@@ -1053,25 +1090,23 @@ void theOne(uint8_t boardId) {
         if (nc.x >= 0 && nc.x < 9 && nc.y >= 0 && nc.y < 9
             && map[nc.y][nc.x] != OUTSIDE) {
           map[c.y][c.x] &= 0xf;
-          map[nc.y][nc.x] |= (map[nc.y][nc.x] == HOLE?
-              BAD_CURSOR : GOOD_CURSOR);
           c = nc;
+          map[c.y][c.x] |= (map[c.y][c.x] == HOLE
+              || !theOneGetPossibleMove(map, c, &possibleMove)?
+              BAD_CURSOR : GOOD_CURSOR);
         }
-        else {
+        else
           nc = c;
-        }
       }
-      else if (pressed[0] & BTN_A && (map[c.y][c.x] & GOOD_CURSOR)) {
+      else if (pressed[0] & BTN_A && (map[c.y][c.x] & GOOD_CURSOR))
         peg = c;
-      }
 
       WaitVsync(1);
       controllerEnd();
     }
 
     /* Picking the hole */
-    c.x = 3;
-    c.y = peg.x == 3 && peg.y == 3? 2 : 3;
+    c = possibleMove;
     map[c.y][c.x] |= (map[c.y][c.x] == HOLE && theOneIsHoleGood(peg, c, map)?
         GOOD_CURSOR : BAD_CURSOR);
     hole.x = -1;
@@ -2738,6 +2773,7 @@ int main() {
 
         case 4:
           /* The One */
+	  theOneLoadTiles();
           r = onePlayerMenu(0, NUM_THE_ONE_BOARDS);
           if (r == -1)
             goto beginning;
