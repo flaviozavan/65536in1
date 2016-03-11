@@ -1997,7 +1997,7 @@ uint8_t rainMoveDown(uint8_t player) {
 }
 
 void rainShoot(uint8_t player, uint8_t key) {
-  const char charMap[] = "<UD>ABXYLR";
+  const char charMap[] = "<()>ABXYLR";
   const uint8_t yOffset = 8;
   const uint8_t xOffset = player? 18 : 3;
 

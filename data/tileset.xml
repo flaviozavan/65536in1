@@ -5,7 +5,7 @@
         <tiles var-name="tileset"/>
         <defines>
           <define def-name="SKY_TILE" left="0" top="10"/>
-          <define def-name="ARROW_TILE" left="10" top="0"/>
+          <define def-name="ARROW_TILE" left="30" top="0"/>
           <define def-name="PAINTED_TILE" left="11" top="0"/>
           <define def-name="PERIOD_TILE" left="14" top="0"/>
           <define def-name="HIT_TILE" left="3" top="10"/>
