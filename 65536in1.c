@@ -48,7 +48,7 @@
 #define RED_7 7
 #define BROWN 20
 #define BLUE_3 (3 << 6)
-#define GREEN_6 (6 << 3)
+#define GREEN_3 (3 << 3)
 #define TOTAL_CHESTS 26
 #define LIMIT_COLOR 126
 
@@ -203,6 +203,14 @@ struct trollenLevel {
   uint8_t map[6][6];
 };
 
+/* A simple sprite for blitting a flash tile onto a ram tile */
+struct simpleSprite {
+  uint16_t p;
+  uint8_t rt;
+  uint8_t bgTile;
+  const char *fgTile;
+};
+
 extern uint8_t vram[];
 extern char ram_tiles[];
 /* Controller Handling */
@@ -220,6 +228,12 @@ void rtDrawRectangle(uint8_t t, uint8_t x, uint8_t y, uint8_t w, uint8_t h,
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
+void ssLoadFromMap(const char *map, struct simpleSprite *ss,
+    uint8_t x, uint8_t y, uint8_t baseRt, const char *tt);
+void ssSwitchMap(const char *map, struct simpleSprite *ss, const char *tt);
+void ssUnblit(struct simpleSprite *ss, uint8_t len);
+void ssBlit(struct simpleSprite *ss, uint8_t len);
+void ssMove(struct simpleSprite *ss, uint8_t len, int8_t x, int8_t y);
 void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base);
 void greedLoadBatteryTiles();
 void greed(uint8_t human);
@@ -325,6 +339,67 @@ void printColoredShort(uint8_t x, uint8_t y, uint16_t s, uint8_t base) {
     SetTile(x--, y, base + (s % 10));
     s /= 10;
   } while (s);
+}
+
+void ssLoadFromMap(const char *map, struct simpleSprite *ss,
+    uint8_t x, uint8_t y, uint8_t baseRt, const char *tt) {
+  uint8_t w = pgm_read_byte(map++);
+  uint8_t h = pgm_read_byte(map++);
+  uint8_t i, j;
+  uint8_t *row = vram + y*VRAM_TILES_H;
+
+  for (i = 0; i < h; i++) {
+    for (j = 0; j < w; j++) {
+      ss->p = (y+i)*VRAM_TILES_H + x+j;
+      ss->rt = baseRt++;
+      ss->bgTile = row[x+j];
+      ss->fgTile = tt + 64*pgm_read_byte(map++);
+      ss++;
+    }
+    row += VRAM_TILES_H;
+  }
+}
+
+void ssSwitchMap(const char *map, struct simpleSprite *ss, const char *tt) {
+  uint8_t w = pgm_read_byte(map++);
+  uint8_t h = pgm_read_byte(map++);
+  uint8_t i;
+
+  ssUnblit(ss, w*h);
+  for (i = 0; i < w*h; i++)
+    ss[i].fgTile = tt + 64*pgm_read_byte(map++);
+  ssBlit(ss, w*h);
+}
+
+void ssUnblit(struct simpleSprite *ss, uint8_t len) {
+  while (len--) {
+    vram[ss->p] = ss->bgTile;
+    ss++;
+  }
+}
+
+void ssBlit(struct simpleSprite *ss, uint8_t len) {
+  uint8_t i, b;
+  char *rt, *bg;
+
+  while (len--) {
+    rt = ram_tiles + 64*ss->rt;
+    bg = ram_tiles + 64*ss->bgTile;
+    for (i = 0; i < 64; i++) {
+      b = pgm_read_byte(ss->fgTile+i);
+      rt[i] = b == TRANSLUCENT_COLOR? bg[i] : b;
+    }
+    vram[ss->p] = ss->rt;
+    ss++;
+  }
+}
+
+void ssMove(struct simpleSprite *ss, uint8_t len, int8_t x, int8_t y) {
+  while (len--) {
+    ss->p += VRAM_TILES_H*y + x;
+    ss->bgTile = vram[ss->p];
+    ss++;
+  }
 }
 
 void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base) {
@@ -2231,7 +2306,7 @@ void trollenLoadBaseTiles() {
   }
 
   copyTileToRam(tileset, FLASH_NO_TILE, NO_TILE+RAM_TILES_COUNT);
-  rtDrawRectangle(GRASS_TILE+RAM_TILES_COUNT, 0, 0, 8, 8, GREEN_6);
+  rtDrawRectangle(GRASS_TILE+RAM_TILES_COUNT, 0, 0, 8, 8, GREEN_3);
 
   copyTileToRam(tileset, FLASH_SYMBOL_0, SYMBOL_0+RAM_TILES_COUNT);
   copyTileToRam(tileset, FLASH_SYMBOL_1, SYMBOL_1+RAM_TILES_COUNT);
@@ -2330,6 +2405,7 @@ void trollenLoadLevel(uint8_t n, struct trollenLevel *level) {
 void trollenDrawLevel(const struct trollenLevel *level) {
   uint8_t i, j, x, y;
 
+  memset(vram, GRASS_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
   for (y = 2, i = 0; i < 6; i++, y += 4) {
     for (x = 3, j = 0; j < 6; j++, x += 4) {
       SetTile(x, y,
@@ -2373,19 +2449,6 @@ void trollenDrawLevel(const struct trollenLevel *level) {
   for (i = 0; i < MAX_TRAPS; i++)
     if (level->trap[i].x < 6*4 && level->trap[i].y < 6*4)
       DrawMap2(level->trap[i].x+4, level->trap[i].y+3, symbolMap);
-
-  DrawMap2(level->hero.x+4, level->hero.y+3, trollGuyMap);
-
-  for (i = 0; i < 2; i++) {
-    if (level->troll[i].type == V_TROLL)
-      DrawMap2(level->troll[i].pos.x+4, level->troll[i].pos.y+3,
-          level->troll[i].stun? stunnedVTrollMap : vTrollMap);
-    else if (level->troll[i].type == H_TROLL)
-      DrawMap2(level->troll[i].pos.x+4, level->troll[i].pos.y+3,
-          level->troll[i].stun? stunnedHTrollMap : hTrollMap);
-    else if (level->troll[i].type == S_TROLL)
-      DrawMap2(level->troll[i].pos.x+4, level->troll[i].pos.y+3, sTrollMap);
-  }
 }
 
 uint8_t trollen(uint8_t levelNum) {
@@ -2394,10 +2457,27 @@ uint8_t trollen(uint8_t levelNum) {
   struct int8_t_pair trollNext[2];
   uint8_t heroTile, tTile;
   uint8_t outcome = 0;
-  trollenLoadLevel(levelNum, &level);
+  struct simpleSprite sSprites[4*3];
+  uint8_t usedSSprites = 0;
+  struct int8_t_pair lastPos;
 
-  Fill(0, 0, 30, 28, NO_TILE);
+  trollenLoadLevel(levelNum, &level);
   trollenDrawLevel(&level);
+
+  ssLoadFromMap(trollGuyMap, sSprites, level.hero.x+4, level.hero.y+3,
+      RAM_TILES_COUNT-12, tileset);
+  usedSSprites += 4;
+  for (uint8_t i = 0; i < 2; i++) {
+    if (level.troll[i].type == NO_TROLL)
+      break;
+    ssLoadFromMap(level.troll[i].type == V_TROLL? vTrollMap
+        : (level.troll[i].type == H_TROLL? hTrollMap : sTrollMap),
+        sSprites + 4*(i+1),
+        level.troll[i].pos.x+4, level.troll[i].pos.y+3,
+        RAM_TILES_COUNT-8+4*i, tileset);
+    usedSSprites += 4;
+  }
+  ssBlit(sSprites, usedSSprites);
 
   while (!outcome) {
     /* Waiting for input */
@@ -2430,7 +2510,10 @@ uint8_t trollen(uint8_t levelNum) {
           outcome = DEFEAT;
 
     /* Hero moving */
-    for (uint8_t i = outcome == VICTORY? 3 : 4; i > 0; i--) {
+    for (uint8_t i = 4; i > 0; i--) {
+      ssUnblit(sSprites, 4);
+      lastPos = level.hero;
+
       if (level.hero.x < heroNext.x)
         level.hero.x++;
       else if (level.hero.x > heroNext.x)
@@ -2440,7 +2523,9 @@ uint8_t trollen(uint8_t levelNum) {
       else if (level.hero.y > heroNext.y)
         level.hero.y--;
 
-      trollenDrawLevel(&level);
+      ssMove(sSprites, 4, level.hero.x-lastPos.x, level.hero.y-lastPos.y);
+      ssBlit(sSprites, 4);
+
       WaitVsync(5);
     }
 
@@ -2452,8 +2537,7 @@ uint8_t trollen(uint8_t levelNum) {
         if (level.troll[i].type == NO_TROLL || level.troll[i].stun)
          continue;
 
-        trollNext[i] = (struct int8_t_pair) {
-          level.troll[i].pos.x, level.troll[i].pos.y};
+        trollNext[i] = level.troll[i].pos;
 
         tTile = level.map[level.troll[i].pos.y/4][level.troll[i].pos.x/4];
         if (level.troll[i].type == V_TROLL) {
@@ -2490,6 +2574,8 @@ uint8_t trollen(uint8_t levelNum) {
             still++;
             continue;
           }
+          ssUnblit(sSprites+4*(j+1), 4);
+          lastPos = level.troll[j].pos;
 
           if (level.troll[j].pos.x < trollNext[j].x) {
             level.troll[j].pos.x++;
@@ -2509,12 +2595,15 @@ uint8_t trollen(uint8_t levelNum) {
           }
           else
             still++;
+
+          ssMove(sSprites+4*(j+1), 4,
+              level.troll[j].pos.x-lastPos.x, level.troll[j].pos.y-lastPos.y);
+          ssBlit(sSprites+4*(j+1), 4);
         }
 
         if (still == 2)
           break;
 
-        trollenDrawLevel(&level);
         WaitVsync(5);
       }
 
@@ -2531,7 +2620,9 @@ uint8_t trollen(uint8_t levelNum) {
               && level.troll[i].pos.x == level.trap[j].x
               && level.troll[i].pos.y == level.trap[j].y) {
             level.troll[i].stun = 4;
-            trollenDrawLevel(&level);
+            ssSwitchMap(level.troll[i].type == H_TROLL?
+                stunnedHTrollMap : stunnedVTrollMap,
+                sSprites+4*(i+1), tileset);
             WaitVsync(1);
           }
         }
@@ -2544,17 +2635,22 @@ uint8_t trollen(uint8_t levelNum) {
         level.troll[0].stun = 0;
         level.troll[1].type = NO_TROLL;
 
-        trollenDrawLevel(&level);
+        ssUnblit(sSprites+8, 4);
+        ssSwitchMap(sTrollMap, sSprites+4, tileset);
+        usedSSprites -= 4;
+
         WaitVsync(1);
 
         break;
       }
     }
 
-    if (level.troll[0].stun)
-      level.troll[0].stun--;
-    if (level.troll[1].stun)
-      level.troll[1].stun--;
+    for (uint8_t i = 0; i < 2; i++) {
+      if (!level.troll[i].stun || --level.troll[i].stun)
+        continue;
+      ssSwitchMap(level.troll[i].type == H_TROLL? hTrollMap : vTrollMap,
+          sSprites+4*(i+1), tileset);
+    }
   }
 
   if (outcome == VICTORY)
@@ -2565,10 +2661,8 @@ uint8_t trollen(uint8_t levelNum) {
   while (1) {
       controllerStart();
 
-      if (pressed[0] & BTN_START) {
-        controllerEnd();
+      if (pressed[0] & BTN_START)
         break;
-      }
 
       WaitVsync(1);
       controllerEnd();
