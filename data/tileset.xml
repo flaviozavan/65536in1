@@ -23,6 +23,8 @@
           <define def-name="GREEN_BALL_TILE" left="2" top="21"/>
           <define def-name="BLOCK_TILE" left="0" top="22"/>
           <define def-name="BLOODY_BLOCK_TILE" left="1" top="22"/>
+          <define def-name="BATTERY0_TILE" left="0" top="7"/>
+          <define def-name="BATTERY1_TILE" left="0" top="8"/>
         </defines>
         <maps pointers-size="8">
             <!-- Top Menu -->

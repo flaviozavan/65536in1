@@ -10,9 +10,9 @@
 #include "data/theone.inc"
 
 #define WHITE_NUMBER 16
-#define BLUE_NUMBER 64
-#define GREEN_NUMBER 74
-#define CROSSED_OUT_NUMBER (-RAM_TILES_COUNT)
+#define BLUE_NUMBER (-RAM_TILES_COUNT)
+#define GREEN_NUMBER (10-RAM_TILES_COUNT)
+#define CROSSED_OUT_NUMBER (20-RAM_TILES_COUNT)
 #define CPU_DELAY 30
 #define STENCH_ROOM 1
 #define BREEZE_ROOM 2
@@ -228,6 +228,7 @@ void rtDrawRectangle(uint8_t t, uint8_t x, uint8_t y, uint8_t w, uint8_t h,
 void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredByte2(uint8_t x, uint8_t y, uint8_t byte, uint8_t base);
 void printColoredShort(uint8_t x, uint8_t y, uint16_t byte, uint8_t base);
+void loadColoredNumbers();
 void ssLoadFromMap(const char *map, struct simpleSprite *ss,
     uint8_t x, uint8_t y, uint8_t baseRt, const char *tt);
 void ssSwitchMap(const char *map, struct simpleSprite *ss, const char *tt);
@@ -341,6 +342,17 @@ void printColoredShort(uint8_t x, uint8_t y, uint16_t s, uint8_t base) {
   } while (s);
 }
 
+void loadColoredNumbers() {
+  uint8_t i = 0;
+
+  for (i = 0; i < 10; i++) {
+    copyTileToRam(tileset, WHITE_NUMBER+i, i);
+    rtReplaceColor(i, 255, 168);
+    copyTileToRam(tileset, WHITE_NUMBER+i, 10+i);
+    rtReplaceColor(10+i, 255, 32);
+  }
+}
+
 void ssLoadFromMap(const char *map, struct simpleSprite *ss,
     uint8_t x, uint8_t y, uint8_t baseRt, const char *tt) {
   uint8_t w = pgm_read_byte(map++);
@@ -425,11 +437,14 @@ void printMoney(uint8_t x, uint8_t y, uint32_t value, uint8_t base) {
 void greedLoadBatteryTiles() {
   uint8_t i, j;
   uint8_t newColors[] = {72, 67, 19, 236};
+  uint8_t p = 20;
 
   for (i = 0; i < 4; i++)
-    for (j = 0; j < 6; j++) {
-      copyTileToRam(tileset, pgm_read_byte(battery0Map+2+j), 6*i+j);
-      rtReplaceColor(6*i+j, 24, newColors[i]);
+    for (j = 1; j < 6; j++) {
+      if (j == 3)
+        continue;
+      copyTileToRam(tileset, pgm_read_byte(battery0Map+2+j), p);
+      rtReplaceColor(p++, 24, newColors[i]);
     }
 }
 
@@ -678,10 +693,9 @@ void rich() {
 
   /* Generate crossed-out numbers */
   for (i = 0; i < 10; i++) {
-    copyTileToRam(tileset, WHITE_NUMBER+i, i);
-    rtDrawRectangle(i, 0, 3, 8, 2, RED_6);
+    copyTileToRam(tileset, WHITE_NUMBER+i, 20+i);
+    rtDrawRectangle(20+i, 0, 3, 8, 2, RED_6);
   }
-  SetTile(0, 0, -RAM_TILES_COUNT);
 
   /* Randomize */
   for (i = 0; i < 26; i++) {
@@ -2867,6 +2881,7 @@ int main() {
       switch(game % 10) {
         case 0:
           /* Greed */
+          loadColoredNumbers();
           greedLoadBatteryTiles();
           DrawMap2(9, 7, (const char *) pgm_read_word(batteries + random()%5));
           DrawMap2(13, 7,
@@ -2941,6 +2956,7 @@ int main() {
 
         case 6:
           /* Survival */
+          loadColoredNumbers();
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
@@ -2949,6 +2965,7 @@ int main() {
 
         case 7:
           /* Rain */
+          loadColoredNumbers();
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
@@ -2957,6 +2974,7 @@ int main() {
 
         case 8:
           /* Array */
+          loadColoredNumbers();
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
@@ -2965,6 +2983,7 @@ int main() {
 
         case 9:
           /* Rich */
+          loadColoredNumbers();
           r = onePlayerMenu(0, 0);
           if (r == -1)
             goto beginning;
