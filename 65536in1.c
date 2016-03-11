@@ -51,6 +51,8 @@
 #define GREEN_3 (3 << 3)
 #define TOTAL_CHESTS 26
 #define LIMIT_COLOR 126
+#define RAM 0
+#define FLASH 1
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -203,12 +205,13 @@ struct trollenLevel {
   uint8_t map[6][6];
 };
 
-/* A simple sprite for blitting a flash tile onto a ram tile */
+/* A simple sprite for blitting onto a ram tile */
 struct simpleSprite {
   uint16_t p;
   uint8_t rt;
   uint8_t bgTile;
   const char *fgTile;
+  uint8_t fgSource;
 };
 
 extern uint8_t vram[];
@@ -254,7 +257,7 @@ bool theOneGetPossibleMove(uint8_t map[9][9], struct int8_t_pair peg,
     struct int8_t_pair *move);
 void theOne(uint8_t boardId);
 uint8_t getParent(uint8_t v, uint8_t *parent);
-uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent);
+uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
 void monster();
@@ -270,6 +273,7 @@ void sort(uint8_t human);
 void trollenLoadBaseTiles();
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
 void trollenDrawLevel(const struct trollenLevel *level);
+void trollenDrawTitle();
 uint8_t trollen(uint8_t level);
 uint16_t topmenu();
 void drawBaseTitle(uint16_t game);
@@ -357,7 +361,7 @@ void ssLoadFromMap(const char *map, struct simpleSprite *ss,
     uint8_t x, uint8_t y, uint8_t baseRt, const char *tt) {
   uint8_t w = pgm_read_byte(map++);
   uint8_t h = pgm_read_byte(map++);
-  uint8_t i, j;
+  uint8_t i, j, p;
   uint8_t *row = vram + y*VRAM_TILES_H;
 
   for (i = 0; i < h; i++) {
@@ -365,7 +369,14 @@ void ssLoadFromMap(const char *map, struct simpleSprite *ss,
       ss->p = (y+i)*VRAM_TILES_H + x+j;
       ss->rt = baseRt++;
       ss->bgTile = row[x+j];
-      ss->fgTile = tt + 64*pgm_read_byte(map++);
+      p = pgm_read_byte(map++);
+      if (p > 256-RAM_TILES_COUNT) {
+        ss->fgSource = RAM;
+        p += RAM_TILES_COUNT;
+      }
+      else
+        ss->fgSource = FLASH;
+      ss->fgTile = (ss->fgSource == FLASH? tt : ram_tiles) + 64*p;
       ss++;
     }
     row += VRAM_TILES_H;
@@ -375,11 +386,19 @@ void ssLoadFromMap(const char *map, struct simpleSprite *ss,
 void ssSwitchMap(const char *map, struct simpleSprite *ss, const char *tt) {
   uint8_t w = pgm_read_byte(map++);
   uint8_t h = pgm_read_byte(map++);
-  uint8_t i;
+  uint8_t i, p;
 
   ssUnblit(ss, w*h);
-  for (i = 0; i < w*h; i++)
-    ss[i].fgTile = tt + 64*pgm_read_byte(map++);
+  for (i = 0; i < w*h; i++) {
+    p = pgm_read_byte(map++);
+    if (p > 256-RAM_TILES_COUNT) {
+      ss[i].fgSource = RAM;
+      p += RAM_TILES_COUNT;
+    }
+    else
+      ss[i].fgSource = FLASH;
+    ss[i].fgTile = (ss[i].fgSource == FLASH? tt : ram_tiles) + 64*p;
+  }
   ssBlit(ss, w*h);
 }
 
@@ -398,7 +417,7 @@ void ssBlit(struct simpleSprite *ss, uint8_t len) {
     rt = ram_tiles + 64*ss->rt;
     bg = ram_tiles + 64*ss->bgTile;
     for (i = 0; i < 64; i++) {
-      b = pgm_read_byte(ss->fgTile+i);
+      b = ss->fgSource == FLASH? pgm_read_byte(ss->fgTile+i) : ss->fgTile[i];
       rt[i] = b == TRANSLUCENT_COLOR? bg[i] : b;
     }
     vram[ss->p] = ss->rt;
@@ -1291,11 +1310,12 @@ uint8_t getParent(uint8_t v, uint8_t *parent) {
   return i;
 }
 
-uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH], uint8_t *parent) {
+uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
   uint8_t i, y, x, yy, xx, d;
   uint8_t yxType, yyxxType;
   uint8_t visited = 0;
   uint8_t unions = 1;
+  uint8_t parent[CAVE_HEIGHT * CAVE_WIDTH];
   /* 255 == -1 because of the overflow */
   const uint8_t dx[] = {0, 1, 0, 255};
   const uint8_t dy[] = {255, 0, 1, 0};
@@ -1393,7 +1413,6 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 }
 
 void monster() {
-  uint8_t parent[CAVE_HEIGHT * CAVE_WIDTH];
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
   const uint8_t dx[] = {0, 1, 0, 255};
@@ -1478,7 +1497,7 @@ void monster() {
   tth_found_guy:
 
   /* Only accept connected graphs */
-  if (!checkConnectivity(map, parent)) goto generate_cave;
+  if (!checkConnectivity(map)) goto generate_cave;
 
   EnableSoundEngine();
   /* If the highest bit is set, the room is visible */
@@ -2326,6 +2345,24 @@ void trollenLoadBaseTiles() {
   copyTileToRam(tileset, FLASH_SYMBOL_1, SYMBOL_1+RAM_TILES_COUNT);
   copyTileToRam(tileset, FLASH_SYMBOL_2, SYMBOL_2+RAM_TILES_COUNT);
   copyTileToRam(tileset, FLASH_SYMBOL_3, SYMBOL_3+RAM_TILES_COUNT);
+
+  for (i = 0; i < 4; i++) {
+    copyTileToRam(tileset, pgm_read_byte(hTrollMap+2+i), 18+i);
+    if (i < 2)
+      copyTileToRam(tileset, pgm_read_byte(stunnedHTrollMap+2+i), 18+4+i);
+    copyTileToRam(tileset, pgm_read_byte(hTrollMap+2+i), 18+6+i);
+  }
+
+  for (i = 0; i < 6; i++) {
+    rtReplaceColor(18+i, 31, 43);
+    rtReplaceColor(18+i, 23, 32);
+    rtReplaceColor(18+i, 168, 214);
+  }
+  for (i = 0; i < 4; i++) {
+    rtReplaceColor(18+6+i, 31, 152);
+    rtReplaceColor(18+6+i, 23, 128);
+    rtReplaceColor(18+6+i, 168, 184);
+  }
 }
 
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level) {
@@ -2463,6 +2500,17 @@ void trollenDrawLevel(const struct trollenLevel *level) {
   for (i = 0; i < MAX_TRAPS; i++)
     if (level->trap[i].x < 6*4 && level->trap[i].y < 6*4)
       DrawMap2(level->trap[i].x+4, level->trap[i].y+3, symbolMap);
+}
+
+void trollenDrawTitle() {
+  struct simpleSprite sSprites[8];
+
+  DrawMap2(11, 8, trollBoxMap);
+  DrawMap2(15, 8, trollBoxMap);
+
+  ssLoadFromMap(hTrollMap, sSprites, 12, 9, RAM_TILES_COUNT-8, tileset);
+  ssLoadFromMap(vTrollMap, sSprites+4, 16, 9, RAM_TILES_COUNT-4, tileset);
+  ssBlit(sSprites, 8);
 }
 
 uint8_t trollen(uint8_t levelNum) {
@@ -2630,7 +2678,8 @@ uint8_t trollen(uint8_t levelNum) {
           outcome = DEFEAT;
 
         for (uint8_t j = 0; j < MAX_TRAPS; j++) {
-          if (moved[i] && !level.troll[i].stun
+          if (moved[i] && level.troll[i].type != S_TROLL
+              && !level.troll[i].stun
               && level.troll[i].pos.x == level.trap[j].x
               && level.troll[i].pos.y == level.trap[j].y) {
             level.troll[i].stun = 4;
@@ -2906,10 +2955,7 @@ int main() {
         case 2:
           /* Trollen */
           trollenLoadBaseTiles();
-          DrawMap2(11, 8, trollBoxMap);
-          DrawMap2(12, 9, hTrollMap);
-          DrawMap2(15, 8, trollBoxMap);
-          DrawMap2(16, 9, vTrollMap);
+          trollenDrawTitle();
 
           r = onePlayerMenu(trollenLevel, NUM_TROLLEN_LEVELS);
           if (r == -1)

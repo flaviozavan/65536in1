@@ -82,13 +82,7 @@
                 width="2" height="2"/>
             <map var-name="hTrollMap" left="13" top="13"
                 width="2" height="2"/>
-            <map var-name="vTrollMap" left="15" top="13"
-                width="2" height="2"/>
             <map var-name="stunnedHTrollMap" left="17" top="13"
-                width="2" height="2"/>
-            <map var-name="stunnedVTrollMap" left="19" top="13"
-                width="2" height="2"/>
-            <map var-name="sTrollMap" left="21" top="13"
                 width="2" height="2"/>
 
             <!-- The One -->
