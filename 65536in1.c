@@ -53,6 +53,7 @@
 #define LIMIT_COLOR 126
 #define RAM 0
 #define FLASH 1
+#define COLOR_CHANGE_DELAY 2
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -2739,6 +2740,11 @@ uint16_t topmenu() {
   uint16_t t;
   uint8_t i;
   char goingUp = 0;
+  uint8_t nextColorChange = COLOR_CHANGE_DELAY;
+  uint8_t nextLetter = 0;
+
+  for (i = 0; i < 8; i++)
+    rtDrawRectangle(i, 0, 0, 8, 8, random());
 
   draw_page:
   /* Build the basic interface */
@@ -2765,6 +2771,11 @@ uint16_t topmenu() {
 
   while (1) {
     controllerStart();
+    if (!(--nextColorChange)) {
+      rtDrawRectangle(nextLetter++, 0, 0, 8, 8, random());
+      nextLetter %= 8;
+      nextColorChange = COLOR_CHANGE_DELAY;
+    }
 
     if (pressed[0] & BTN_DOWN) {
       if (i < 15) {
