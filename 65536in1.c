@@ -54,6 +54,7 @@
 #define RAM 0
 #define FLASH 1
 #define COLOR_CHANGE_DELAY 2
+#define SKY_COLOR 226
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -137,6 +138,7 @@ const char strScore[] PROGMEM = "SCORE:";
 const char strGameOver[] PROGMEM = "GAME OVER";
 const char strDraw[] PROGMEM = "DRAW";
 const char strDied[] PROGMEM = "YOU DIED";
+const char strRainButtons[] PROGMEM = "<()>ABXYLR";
 
 const char * const batteries[] PROGMEM = {
   battery0Map,
@@ -2017,12 +2019,11 @@ uint8_t rainMoveDown(uint8_t player) {
 }
 
 void rainShoot(uint8_t player, uint8_t key) {
-  const char charMap[] = "<()>ABXYLR";
   const uint8_t yOffset = 8;
   const uint8_t xOffset = player? 18 : 3;
 
   SetTile(xOffset+key, yOffset-1, FIRE_TILE);
-  SetTile(xOffset+key, yOffset, charMap[key]-' ');
+  SetTile(xOffset+key, yOffset, 30-RAM_TILES_COUNT+key);
 }
 
 void rainRemove(uint8_t player, uint8_t key) {
@@ -2053,6 +2054,12 @@ void rain(uint8_t players) {
     BTN_B, BTN_X, BTN_Y, BTN_SL, BTN_SR};
 
   memset(falling, 0, sizeof(falling));
+
+  /* Load the characters with the right BG */
+  for (i = 0; i < 10; i++) {
+    copyTileToRam(tileset, pgm_read_byte(strRainButtons+i)-' ', 30+i);
+    rtReplaceColor(30+i, DEFAULT_GRAY, SKY_COLOR);
+  }
 
   /* Draw the basic screen */
   ClearVram();
