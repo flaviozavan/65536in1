@@ -141,6 +141,12 @@ const char strGameOver[] PROGMEM = "GAME OVER";
 const char strDraw[] PROGMEM = "DRAW";
 const char strDied[] PROGMEM = "YOU DIED";
 const char strRainButtons[] PROGMEM = "<()>ABXYLR";
+const char strMonster0 [] PROGMEM = "THE MONSTER";
+const char strMonster1 [] PROGMEM = "ITS STENCH CAN BE";
+const char strMonster2 [] PROGMEM = "SMELLED TWO ROOMS AWAY";
+const char strMonster3 [] PROGMEM = "A HOLE";
+const char strMonster4 [] PROGMEM = "ITS BREEZE CAN BE";
+const char strMonster5 [] PROGMEM = "FELT A ROOM AWAY";
 
 const char * const batteries[] PROGMEM = {
   battery0Map,
@@ -3011,22 +3017,22 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
   int8_t i = 0;
   uint32_t r = 0;
 
-  Print(12, 15, strStart);
-  Print(12, 16, strExit);
-  SetTile(10, 15, ARROW_TILE);
+  Print(12, 16, strStart);
+  Print(12, 17, strExit);
+  SetTile(10, 16, ARROW_TILE);
 
   while (1) {
     controllerStart();
 
     if (pressed[0] & BTN_DOWN) {
-      SetTile(10, 15 + i, 0);
+      SetTile(10, 16 + i, 0);
       i = (i + 1) & 1;
-      SetTile(10, 15 + i, ARROW_TILE);
+      SetTile(10, 16 + i, ARROW_TILE);
     }
     else if (pressed[0] & BTN_UP) {
-      SetTile(10, 15 + i, 0);
+      SetTile(10, 16 + i, 0);
       i = (6 + i - 1) & 1;
-      SetTile(10, 15 + i, ARROW_TILE);
+      SetTile(10, 16 + i, ARROW_TILE);
     }
     else if (pressed[0] & BTN_LEFT && !i) {
       /* Level is unsigned */
@@ -3044,7 +3050,7 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
     }
 
     if (levels)
-      PrintByte(20, 15, level, 0);
+      PrintByte(20, 16, level, 0);
 
     r++;
     WaitVsync(1);
@@ -3127,6 +3133,17 @@ int main() {
 
         case 5:
           /* Monster */
+          DrawMap2(4, 7, wumpusMap);
+          Print(7, 7, strMonster0);
+          DrawMap2(4, 9, redRoomMap);
+          Print(7, 9, strMonster1);
+          Print(6, 10, strMonster2);
+          DrawMap2(4, 11, holeMap);
+          Print(7, 11, strMonster3);
+          DrawMap2(4, 13, greenRoomMap);
+          Print(7, 13, strMonster4);
+          Print(6, 14, strMonster5);
+          /*
           DrawMap2(12, 7, redRoomMap);
           DrawMap2(14, 7, redRoomMap);
           DrawMap2(16, 7, redRoomMap);
@@ -3136,6 +3153,7 @@ int main() {
           DrawMap2(12, 11, redRoomMap);
           DrawMap2(14, 11, redRoomMap);
           DrawMap2(16, 11, redRoomMap);
+          */
 
           r = onePlayerMenu(0, 0);
           if (r == -1)
