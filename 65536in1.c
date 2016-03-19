@@ -132,9 +132,9 @@ const char strPlayer1[] PROGMEM = "PLAYER 1:";
 const char strPlayer2[] PROGMEM = "PLAYER 2:";
 const char strGenerating[] PROGMEM = "GENERATING LEVEL";
 const char strWait[] PROGMEM = "PLEASE WAIT";
-const char strAte[] PROGMEM = "THE WUMPUS ATE YOU";
+const char strAte[] PROGMEM = "THE MONSTER ATE YOU";
 const char strFell[] PROGMEM = "YOU FELL IN A HOLE";
-const char strKill[] PROGMEM = "YOU KILLED THE WUMPUS";
+const char strKill[] PROGMEM = "YOU KILLED THE MONSTER";
 const char strLives[] PROGMEM = "LIVES:";
 const char strScore[] PROGMEM = "SCORE:";
 const char strGameOver[] PROGMEM = "GAME OVER";
@@ -1500,7 +1500,7 @@ void monsterGenerateLevel(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
   uint8_t n, l, i, t, y, x, tt;
 
   generate_cave:
-  memset(map, 0, CAVE_HEIGHT*(CAVE_WIDTH+1)/2);
+  memset(map, 0, CAVE_HEIGHT*((CAVE_WIDTH+1)/2));
   /* Corridors */
   n = (random() % (CAVE_WIDTH*CAVE_HEIGHT)/4) + (CAVE_WIDTH*CAVE_HEIGHT)/2;
   l = CAVE_WIDTH * CAVE_HEIGHT;
