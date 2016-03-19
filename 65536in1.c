@@ -120,7 +120,6 @@ const char strFor[] PROGMEM = "FOR YOUR CHEST";
 const char strAccept[] PROGMEM = "ACCEPT";
 const char strRefuse[] PROGMEM = "REFUSE";
 const char strReceived[] PROGMEM = "YOU RECEIVED";
-const char strCongratulations[] PROGMEM = "CONGRATULATIONS,";
 const char strWantKeep[] PROGMEM = "DO YOU WANT TO KEEP";
 const char strChestNo[] PROGMEM = "CHEST    OR DO YOU";
 const char strTradeChest[] PROGMEM = "TRADE IT FOR CHEST   ?";
@@ -141,12 +140,13 @@ const char strGameOver[] PROGMEM = "GAME OVER";
 const char strDraw[] PROGMEM = "DRAW";
 const char strDied[] PROGMEM = "YOU DIED";
 const char strRainButtons[] PROGMEM = "<()>ABXYLR";
-const char strMonster0 [] PROGMEM = "THE MONSTER";
-const char strMonster1 [] PROGMEM = "ITS STENCH CAN BE";
-const char strMonster2 [] PROGMEM = "SMELLED TWO ROOMS AWAY";
-const char strMonster3 [] PROGMEM = "A HOLE";
-const char strMonster4 [] PROGMEM = "ITS BREEZE CAN BE";
-const char strMonster5 [] PROGMEM = "FELT A ROOM AWAY";
+const char strMonster0[] PROGMEM = "THE MONSTER";
+const char strMonster1[] PROGMEM = "ITS STENCH CAN BE";
+const char strMonster2[] PROGMEM = "SMELLED TWO ROOMS AWAY";
+const char strMonster3[] PROGMEM = "A HOLE";
+const char strMonster4[] PROGMEM = "ITS BREEZE CAN BE";
+const char strMonster5[] PROGMEM = "FELT A ROOM AWAY";
+const char strNoMoves[] PROGMEM = "NO MOVES LEFT";
 
 const char * const batteries[] PROGMEM = {
   battery0Map,
@@ -1014,7 +1014,7 @@ void rich() {
   }
 
   ClearVram();
-  Print(8, 6, strCongratulations);
+  Print(8, 6, strCongrat);
   Print(10, 7, strReceived);
   printMoney(20, 9, r, WHITE_NUMBER);
   DrawMap2(13, 11, openChestMap);
@@ -1227,15 +1227,20 @@ void theOne(uint8_t boardId) {
   uint8_t pegs = theOneLoadBoard(boardId, map);
   struct int8_t_pair nc, peg, hole, possibleMove;
   struct int8_t_pair c = (struct int8_t_pair) {4, 4};
+  bool moves = true;
 
-  map[c.y][c.x] |= BAD_CURSOR;
   ClearVram();
+  Fill(2, 5, 3*9-2, 2*9, WOODEN_TILE);
+  drawFrame(2, 5, 3*9-2, 2*9);
   theOneDrawMap(map);
 
-  while (pegs > 1) {
+  while (pegs > 1 && moves) {
     /* Picking the peg */
     peg.x = -1;
     nc = c;
+    map[c.y][c.x] |= ((map[c.y][c.x] & 0xf) != HOLE
+        && theOneGetPossibleMove(map, c, &possibleMove)?
+        GOOD_CURSOR : BAD_CURSOR);
     while (peg.x == -1) {
       controllerStart();
 
@@ -1319,7 +1324,7 @@ void theOne(uint8_t boardId) {
 
     if (hole.x != -1) {
       map[peg.y][peg.x] = HOLE;
-      map[hole.y][hole.x] = PEG | GOOD_CURSOR;
+      map[hole.y][hole.x] = PEG;
       c = hole;
       pegs--;
 
@@ -1336,10 +1341,17 @@ void theOne(uint8_t boardId) {
       map[c.y][c.x] &= 0xf;
       c = peg;
     }
+
+    moves = false;
+    for (nc.y = 0; nc.y < 9; nc.y++)
+      for (nc.x = 0; nc.x < 9; nc.x++)
+        if ((map[nc.y][nc.x] & 0xf) == PEG
+            && theOneGetPossibleMove(map, nc, &possibleMove))
+          moves = true;
   }
 
   theOneDrawMap(map);
-  Print(8, 12, strCongrat);
+  Print(8, 12, pegs == 1? strCongrat : strNoMoves);
   for (bool done = false; !done; ) {
     controllerStart();
 
@@ -1692,7 +1704,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
 
   /* Print the result */
   if (shooting == 2) {
-    Print(8, 6, strCongratulations);
+    Print(8, 6, strCongrat);
     Print(4, 14, strKill);
   }
   else if (mapGetType(map, x, y) == HOLE_ROOM)
@@ -3132,6 +3144,7 @@ int main() {
         case 4:
           /* The One */
           theOneLoadTiles();
+          loadFrame(DEFAULT_GRAY);
           r = onePlayerMenu(0, NUM_THE_ONE_BOARDS);
           if (r == -1)
             goto beginning;

@@ -27,6 +27,7 @@
           <define def-name="BATTERY1_TILE" left="0" top="8"/>
           <define def-name="BORDER_CORNER" left="35" top="10"/>
           <define def-name="BORDER_STRAIGHT" left="36" top="10"/>
+          <define def-name="WOODEN_TILE" left="3" top="18"/>
         </defines>
         <maps pointers-size="8">
             <!-- Greed -->
