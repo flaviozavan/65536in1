@@ -709,10 +709,8 @@ void greed(uint8_t human) {
   while (1) {
     controllerStart();
 
-    if (pressed[0] & BTN_START || (human && pressed[1] & BTN_START)) {
-      controllerEnd();
+    if (pressed[0] & BTN_START)
       break;
-    }
 
     WaitVsync(1);
     controllerEnd();
@@ -1232,6 +1230,7 @@ void theOne(uint8_t boardId) {
 
   map[c.y][c.x] |= BAD_CURSOR;
   ClearVram();
+  theOneDrawMap(map);
 
   while (pegs > 1) {
     /* Picking the peg */
@@ -1589,6 +1588,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
   memset(vram, SKY_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
   drawFrame(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2);
   Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
+  FadeIn(3, true);
 
   while (1) {
     /* Redraw */
@@ -1764,6 +1764,7 @@ void monster() {
   DisableSoundEngine();
   monsterGenerateLevel(map, &x, &y);
   EnableSoundEngine();
+  FadeOut(3, true);
 
   monsterPlay(map, x, y);
 }
@@ -2887,6 +2888,7 @@ uint16_t topmenu() {
   /* Build the basic interface */
   ClearVram();
   DrawMap2(1, 2, titleMap);
+  FadeIn(3, true);
 
   /* Print the list */
   for (i = 0; i < 16; i++) {
@@ -2960,6 +2962,8 @@ uint16_t topmenu() {
     controllerEnd();
   }
 
+  FadeOut(3, true);
+
   return (base + (uint16_t) i);
 }
 
@@ -2985,6 +2989,7 @@ int8_t twoPlayersMenu() {
   Print(12, 16, strVsHuman);
   Print(12, 17, strExit);
   SetTile(10, 15, ARROW_TILE);
+  FadeIn(3, true);
 
   i = 0;
   r = 0;
@@ -3004,6 +3009,9 @@ int8_t twoPlayersMenu() {
     else if (pressed[0] & BTN_START) {
       controllerEnd();
       srandom(r);
+
+      FadeOut(3, true);
+      FadeIn(3, false);
       return i;
     }
 
@@ -3020,6 +3028,7 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
   Print(12, 16, strStart);
   Print(12, 17, strExit);
   SetTile(10, 16, ARROW_TILE);
+  FadeIn(3, true);
 
   while (1) {
     controllerStart();
@@ -3041,6 +3050,8 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
     else if (pressed[0] & BTN_START) {
       controllerEnd();
       srandom(r);
+      FadeOut(3, true);
+      FadeIn(3, false);
       return (i? -1 : level);
     }
 
@@ -3139,17 +3150,6 @@ int main() {
           DrawMap2(4, 13, greenRoomMap);
           Print(7, 13, strMonster4);
           Print(6, 14, strMonster5);
-          /*
-          DrawMap2(12, 7, redRoomMap);
-          DrawMap2(14, 7, redRoomMap);
-          DrawMap2(16, 7, redRoomMap);
-          DrawMap2(12, 9, redRoomMap);
-          DrawMap2(14, 9, wumpusMap);
-          DrawMap2(16, 9, redRoomMap);
-          DrawMap2(12, 11, redRoomMap);
-          DrawMap2(14, 11, redRoomMap);
-          DrawMap2(16, 11, redRoomMap);
-          */
 
           r = onePlayerMenu(0, 0);
           if (r == -1)
@@ -3198,6 +3198,8 @@ int main() {
           goto beginning;
       }
       controllerEnd();
+
+      FadeOut(3, true);
     }
   }
 
