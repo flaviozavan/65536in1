@@ -20,8 +20,10 @@
 #define WUMPUS_ROOM 4
 #define HOLE_ROOM 5
 #define CORRIDOR 6
-#define CAVE_WIDTH 12
-#define CAVE_HEIGHT 10
+#define CAVE_WIDTH 10
+#define CAVE_HEIGHT 9
+#define CAVE_OFFSET_X (VRAM_TILES_H/2-CAVE_WIDTH)
+#define CAVE_OFFSET_Y (VRAM_TILES_V/2-CAVE_HEIGHT)
 #define MOVE_DELAY 20
 #define SHOT_DELAY 6
 #define FASTER_DELAY 6
@@ -189,6 +191,13 @@ const uint32_t prizes[] PROGMEM = {
   50, 100, 500, 1000, 2500, 5000, 7500, 10000, 20000, 30000, 40000, 50000,
   75000, 100000, 500000, 1000000, 2500000, 5000000, 7500000, 10000000,
   20000000, 30000000, 40000000, 50000000, 75000000, 100000000
+};
+
+const uint8_t monsterDx[] PROGMEM = {0, 1, 0, 255};
+const uint8_t monsterDy[] PROGMEM = {255, 0, 1, 0};
+const uint8_t monsterCor[2][4] PROGMEM = {
+  {1, 0, 3, 2},
+  {3, 2, 1, 0}
 };
 
 struct int8_t_pair {
@@ -1319,14 +1328,6 @@ uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
   uint8_t visited = 0;
   uint8_t unions = 1;
   uint8_t parent[CAVE_HEIGHT * CAVE_WIDTH];
-  /* 255 == -1 because of the overflow */
-  const uint8_t dx[] = {0, 1, 0, 255};
-  const uint8_t dy[] = {255, 0, 1, 0};
-  const uint8_t cor[2][4] =
-    {
-      {1, 0, 3, 2},
-      {3, 2, 1, 0}
-    };
 
   /* Parent array for the union find structure */
   for (y = 0; y < CAVE_HEIGHT; y++) {
@@ -1348,14 +1349,14 @@ uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
         xx = x;
         yy = y;
         do {
-          yy = yy + CAVE_HEIGHT + dy[d];
+          yy = yy + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
           yy %= CAVE_HEIGHT;
-          xx = xx + CAVE_WIDTH + dx[d];
+          xx = xx + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
           xx %= CAVE_WIDTH;
           yyxxType = map[yy][xx] & (~0x80);
           map[yy][xx] |= 0x80;
           if (yyxxType >= CORRIDOR)
-            d = cor[yyxxType-CORRIDOR][d];
+            d = pgm_read_byte(monsterCor[yyxxType-CORRIDOR]+d);
         } while(yyxxType >= CORRIDOR);
 
         /* Don't union holes */
@@ -1383,27 +1384,19 @@ uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
 
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]) {
-  /* 255 == -1 because of the overflow */
-  const uint8_t dx[] = {0, 1, 0, 255};
-  const uint8_t dy[] = {255, 0, 1, 0};
-  const uint8_t cor[2][4] =
-    {
-      {1, 0, 3, 2},
-      {3, 2, 1, 0}
-    };
   uint8_t yy, xx, i, d;
 
   for (i = 0; i < 4; i++) {
-    yy = y + CAVE_HEIGHT + dy[i];
+    yy = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+i);
     yy %= CAVE_HEIGHT;
-    xx = x + CAVE_WIDTH + dx[i];
+    xx = x + CAVE_WIDTH + pgm_read_byte(monsterDx+i);
     xx %= CAVE_WIDTH;
     d = i;
     while (map[yy][xx] >= CORRIDOR) {
-      d = cor[map[yy][xx] - CORRIDOR][d];
-      yy = yy + CAVE_HEIGHT + dy[d];
+      d = pgm_read_byte(monsterCor[map[yy][xx] - CORRIDOR]+d);
+      yy = yy + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
       yy %= CAVE_HEIGHT;
-      xx = xx + CAVE_WIDTH + dx[d];
+      xx = xx + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
       xx %= CAVE_WIDTH;
     }
 
@@ -1418,13 +1411,6 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 void monster() {
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
-  const uint8_t dx[] = {0, 1, 0, 255};
-  const uint8_t dy[] = {255, 0, 1, 0};
-  const uint8_t cor[2][4] =
-    {
-      {1, 0, 3, 2},
-      {3, 2, 1, 0}
-    };
 
   /* Print loading screen */
   ClearVram();
@@ -1436,7 +1422,7 @@ void monster() {
   generate_cave:
   memset(map, 0, sizeof(map));
   /* Corridors */
-  n = (random() % 31) + 60;
+  n = (random() % (CAVE_WIDTH*CAVE_HEIGHT)/4) + (CAVE_WIDTH*CAVE_HEIGHT)/2;
   l = CAVE_WIDTH * CAVE_HEIGHT;
   for (i = 0; i < n; i++) {
     /* Remove the t-th clean room */
@@ -1508,14 +1494,15 @@ void monster() {
 
   /* Process input */
   l = 0;
-  ClearVram();
+  memset(vram, SKY_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
+  Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
   while (1) {
     /* Redraw */
     for (i = 0; i < CAVE_HEIGHT; i++) {
       for (n = 0; n < CAVE_WIDTH; n++) {
         if (map[i][n] & 0x80) {
-          DrawMap2(3 + (n << 1),
-            4 + (i << 1),
+          DrawMap2(CAVE_OFFSET_X + n*2,
+            CAVE_OFFSET_Y + i*2,
             (const char*) pgm_read_word(monsterRooms
               + (i == y && x == n? 8 : 0) + (map[i][n] & 0x7f)));
         }
@@ -1524,13 +1511,13 @@ void monster() {
 
     /* Draw the targets if shooting */
     for (i = 0; l && i < 4; i++) {
-      yy = y + CAVE_HEIGHT + dy[i];
+      yy = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+i);
       yy %= CAVE_HEIGHT;
-      xx = x + CAVE_WIDTH + dx[i];
+      xx = x + CAVE_WIDTH + pgm_read_byte(monsterDx+i);
       xx %= CAVE_WIDTH;
 
-      DrawMap2(3 + (xx << 1),
-        4 + (yy << 1),
+      DrawMap2(CAVE_OFFSET_X + xx*2,
+        CAVE_OFFSET_Y + yy*2,
         targetMap);
     }
     /* End game */
@@ -1565,16 +1552,16 @@ void monster() {
       yy = y;
       xx = x;
 
-      y = y + CAVE_HEIGHT + dy[d];
+      y = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
       y %= CAVE_HEIGHT;
-      x = x + CAVE_WIDTH + dx[d];
+      x = x + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
       x %= CAVE_WIDTH;
       while ((map[y][x] & 0x7f) >= CORRIDOR) {
         map[y][x] |= 0x80;
-        d = cor[(map[y][x] & 0x7f) - CORRIDOR][d];
-        y = y + CAVE_HEIGHT + dy[d];
+        d = pgm_read_byte(monsterCor[(map[y][x] & 0x7f) - CORRIDOR]+d);
+        y = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
         y %= CAVE_HEIGHT;
-        x = x + CAVE_WIDTH + dx[d];
+        x = x + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
         x %= CAVE_WIDTH;
       }
       map[y][x] |= 0x80;
@@ -1622,8 +1609,8 @@ void monster() {
   /* Draw the whole cave */
   for (i = 0; i < CAVE_HEIGHT; i++) {
     for (n = 0; n < CAVE_WIDTH; n++) {
-      DrawMap2(3 + (n << 1),
-        4 + (i << 1),
+      DrawMap2(CAVE_OFFSET_X + n*2,
+        CAVE_OFFSET_Y + i*2,
         (const char*) pgm_read_word(monsterRooms
           + (i == y && x == n? 8 : 0) + (map[i][n] & 0x7f)));
     }
