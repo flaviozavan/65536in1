@@ -3024,16 +3024,11 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
   while (1) {
     controllerStart();
 
-    if (pressed[0] & BTN_DOWN) {
-      SetTile(10, 16 + i, 0);
+    SetTile(10, 16 + i, 0);
+    if (pressed[0] & BTN_DOWN)
       i = (i + 1) & 1;
-      SetTile(10, 16 + i, ARROW_TILE);
-    }
-    else if (pressed[0] & BTN_UP) {
-      SetTile(10, 16 + i, 0);
-      i = (6 + i - 1) & 1;
-      SetTile(10, 16 + i, ARROW_TILE);
-    }
+    else if (pressed[0] & BTN_UP)
+      i = (i - 1) & 1;
     else if (pressed[0] & BTN_LEFT && !i) {
       /* Level is unsigned */
       if (--level >= levels)
@@ -3049,6 +3044,7 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
       return (i? -1 : level);
     }
 
+    SetTile(10, 16 + i, ARROW_TILE);
     if (levels)
       PrintByte(20, 16, level, 0);
 
