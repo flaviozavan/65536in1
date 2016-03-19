@@ -263,6 +263,8 @@ void theOne(uint8_t boardId);
 bool checkConnectivity(uint8_t map[][CAVE_WIDTH]);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
+void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole);
+void monsterFixSS(struct simpleSprite *ss, uint8_t len);
 void monster();
 uint8_t testArray(uint8_t *m);
 void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
@@ -1387,9 +1389,46 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   }
 }
 
+void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole) {
+  uint8_t i, n;
+
+  for (i = 0; i < CAVE_HEIGHT; i++) {
+    for (n = 0; n < CAVE_WIDTH; n++) {
+      if (whole || map[i][n] & 0x80) {
+        DrawMap2(CAVE_OFFSET_X + n*2,
+          CAVE_OFFSET_Y + i*2,
+          (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
+      }
+    }
+  }
+}
+
+void monsterFixSS(struct simpleSprite *ss, uint8_t len) {
+  uint8_t i, x, y;
+
+  for (i = 0; i < len; i++, ss++) {
+    x = ss->p % VRAM_TILES_H;
+    y = ss->p / VRAM_TILES_H;
+
+    if (x >= CAVE_OFFSET_X+2*CAVE_WIDTH)
+      x -= 2*CAVE_WIDTH;
+    else if (x < CAVE_OFFSET_X)
+      x += 2*CAVE_WIDTH;
+
+    if (y >= CAVE_OFFSET_Y+2*CAVE_HEIGHT)
+      y -= 2*CAVE_HEIGHT;
+    else if (y < CAVE_OFFSET_Y)
+      y += 2*CAVE_HEIGHT;
+
+    ss->p = y*VRAM_TILES_H + x;
+    ss->bgTile = vram[ss->p];
+  }
+}
+
 void monster() {
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
+  int8_t nx, ny, ox, oy;
   struct simpleSprite sSprites[4];
 
   /* Print loading screen */
@@ -1478,15 +1517,7 @@ void monster() {
   Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
   while (1) {
     /* Redraw */
-    for (i = 0; i < CAVE_HEIGHT; i++) {
-      for (n = 0; n < CAVE_WIDTH; n++) {
-        if (map[i][n] & 0x80) {
-          DrawMap2(CAVE_OFFSET_X + n*2,
-            CAVE_OFFSET_Y + i*2,
-            (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
-        }
-      }
-    }
+    monsterDrawMap(map, false);
     ssLoadFromMap(guyMap, sSprites,
         CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
     ssBlit(sSprites, 4);
@@ -1531,22 +1562,44 @@ void monster() {
 
     /* Moving */
     if (d != 0xff) {
-      yy = y;
-      xx = x;
-
-      y = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
-      y %= CAVE_HEIGHT;
-      x = x + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
-      x %= CAVE_WIDTH;
-      while ((map[y][x] & 0x7f) >= CORRIDOR) {
-        map[y][x] |= 0x80;
-        d = pgm_read_byte(monsterCor[(map[y][x] & 0x7f) - CORRIDOR]+d);
+      do {
+        yy = y;
+        xx = x;
+        ox = CAVE_OFFSET_X+x*2;
+        oy = CAVE_OFFSET_Y+y*2;
         y = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
-        y %= CAVE_HEIGHT;
         x = x + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
+        nx = CAVE_OFFSET_X+(x-CAVE_WIDTH)*2;
+        ny = CAVE_OFFSET_Y+(y-CAVE_HEIGHT)*2;
+
+        y %= CAVE_HEIGHT;
         x %= CAVE_WIDTH;
-      }
-      map[y][x] |= 0x80;
+        map[y][x] |= 0x80;
+
+        if ((map[y][x] & 0x7f) >= CORRIDOR)
+          d = pgm_read_byte(monsterCor[(map[y][x] & 0x7f) - CORRIDOR]+d);
+
+        if (!l) {
+
+          do {
+            if (ox < nx)
+              ox++;
+            else if(ox > nx)
+              ox--;
+            else if(oy < ny)
+              oy++;
+            else if(oy > ny)
+              oy--;
+            monsterDrawMap(map, false);
+            ssLoadFromMap(guyMap, sSprites,
+                ox, oy, 0, tileset);
+            monsterFixSS(sSprites, 4);
+            ssBlit(sSprites, 4);
+            WaitVsync(5);
+          } while (ox != nx || oy != ny);
+        }
+      } while ((map[y][x] & 0x7f) >= CORRIDOR);
+
       /* Shooting */
       if (l) {
         if ((map[y][x] & 0x7f) != WUMPUS_ROOM) {
@@ -1589,13 +1642,10 @@ void monster() {
   controllerEnd();
 
   /* Draw the whole cave */
-  for (i = 0; i < CAVE_HEIGHT; i++) {
-    for (n = 0; n < CAVE_WIDTH; n++) {
-      DrawMap2(CAVE_OFFSET_X + n*2,
-        CAVE_OFFSET_Y + i*2,
-        (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
-    }
-  }
+  monsterDrawMap(map, true);
+  ssLoadFromMap(guyMap, sSprites,
+      CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
+  ssBlit(sSprites, 4);
 
   while (1) {
     controllerStart();
