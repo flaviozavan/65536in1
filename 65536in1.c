@@ -266,7 +266,8 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
 void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole);
 void monsterFixSS(struct simpleSprite *ss, uint8_t len);
-void monsterLoadTiles();
+void loadFrame(uint8_t bgColor);
+void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void monster();
 uint8_t testArray(uint8_t *m);
 void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
@@ -1017,7 +1018,7 @@ void switchSlide(uint8_t p, uint8_t o, uint8_t *m) {
   uint8_t y = (o>>2)*5+4;
 
   while (x != xx || y != yy) {
-    Fill(x, y, 6, 5, RAM_TILES_COUNT);
+    Fill(x, y, 6, 5, -RAM_TILES_COUNT);
 
     if (x < xx)
       x++;
@@ -1059,7 +1060,8 @@ void slide() {
   /* Draw the initial state */
   copyTileToRam(marumbi, 0, 0);
   rtReplaceColor(0, MARUMBI_BLUE, DEFAULT_GRAY);
-  Fill(0, 0, VRAM_TILES_H, VRAM_TILES_V, -RAM_TILES_COUNT);
+  memset(vram, 0, VRAM_TILES_H*VRAM_TILES_V);
+  drawFrame(3, 4, 6*4, 5*4);
   for (i = 0; i < 16; i++) {
     if (m[i])
       DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4,
@@ -1439,16 +1441,29 @@ void monsterFixSS(struct simpleSprite *ss, uint8_t len) {
   }
 }
 
-void monsterLoadTiles() {
+void loadFrame(uint8_t bgColor) {
   uint8_t i;
 
   copyTileToRam(tileset, BORDER_CORNER, 30);
+  rtReplaceColor(30, SKY_COLOR, bgColor);
   copyTileToRam(tileset, BORDER_STRAIGHT, 31);
 
   for (i = 0; i < 6; i += 2) {
     rtRotate90(30+i, 30+i+2);
     rtRotate90(31+i, 31+i+2);
   }
+}
+
+void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  SetTile(x-1, y-1, 30-RAM_TILES_COUNT);
+  Fill(x, y-1, w, 1, 31-RAM_TILES_COUNT);
+  SetTile(x+w, y-1, 32-RAM_TILES_COUNT);
+  Fill(x+w, y, 1, h, 33-RAM_TILES_COUNT);
+  SetTile(x+w, y+h, 34-RAM_TILES_COUNT);
+  Fill(x, y+h, w, 1, 35-RAM_TILES_COUNT);
+  SetTile(x-1, y+h, 36-RAM_TILES_COUNT);
+  Fill(x-1, y, 1, h, 37-RAM_TILES_COUNT);
+
 }
 
 void monster() {
@@ -1540,19 +1555,7 @@ void monster() {
   /* Process input */
   l = 0;
   memset(vram, SKY_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
-
-  SetTile(CAVE_OFFSET_X-1, CAVE_OFFSET_Y-1, 30-RAM_TILES_COUNT);
-  Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y-1, CAVE_WIDTH*2, 1, 31-RAM_TILES_COUNT);
-  SetTile(CAVE_OFFSET_X+CAVE_WIDTH*2, CAVE_OFFSET_Y-1, 32-RAM_TILES_COUNT);
-  Fill(CAVE_OFFSET_X+CAVE_WIDTH*2, CAVE_OFFSET_Y, 1, CAVE_HEIGHT*2,
-      33-RAM_TILES_COUNT);
-  SetTile(CAVE_OFFSET_X+CAVE_WIDTH*2, CAVE_OFFSET_Y+CAVE_HEIGHT*2,
-      34-RAM_TILES_COUNT);
-  Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y+CAVE_HEIGHT*2, CAVE_WIDTH*2, 1,
-      35-RAM_TILES_COUNT);
-  SetTile(CAVE_OFFSET_X-1, CAVE_OFFSET_Y+CAVE_HEIGHT*2, 36-RAM_TILES_COUNT);
-  Fill(CAVE_OFFSET_X-1, CAVE_OFFSET_Y, 1, CAVE_HEIGHT*2, 37-RAM_TILES_COUNT);
-
+  drawFrame(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2);
   Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
 
   while (1) {
@@ -3039,6 +3042,7 @@ int main() {
           if (r == -1)
             goto beginning;
           SetTileTable(marumbi);
+          loadFrame(DEFAULT_GRAY);
           slide();
           SetTileTable(tileset);
           break;
@@ -3067,7 +3071,7 @@ int main() {
           r = onePlayerMenu(0, 0);
           if (r == -1)
             goto beginning;
-          monsterLoadTiles();
+          loadFrame(SKY_COLOR);
           monster();
           break;
 
