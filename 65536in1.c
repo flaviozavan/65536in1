@@ -328,7 +328,7 @@ void printColoredByte(uint8_t x, uint8_t y, uint8_t byte, uint8_t base) {
   SetTile(x--, y, base + (byte % 10));
 
   byte /= 10;
-  SetTile(x--, y, (byte? base + (byte % 12) : 0));
+  SetTile(x--, y, (byte? base + (byte % 10) : 0));
 
   byte /= 10;
   SetTile(x--, y, (byte? base + (byte % 10) : 0));
