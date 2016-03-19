@@ -20,8 +20,8 @@
 #define WUMPUS_ROOM 4
 #define HOLE_ROOM 5
 #define CORRIDOR 6
-#define CAVE_WIDTH 9
-#define CAVE_HEIGHT 9
+#define CAVE_WIDTH 12
+#define CAVE_HEIGHT 10
 #define CAVE_OFFSET_X (VRAM_TILES_H/2-CAVE_WIDTH)
 #define CAVE_OFFSET_Y (VRAM_TILES_V/2-CAVE_HEIGHT)
 #define MOVE_DELAY 20
@@ -260,8 +260,7 @@ uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]);
 bool theOneGetPossibleMove(uint8_t map[9][9], struct int8_t_pair peg,
     struct int8_t_pair *move);
 void theOne(uint8_t boardId);
-uint8_t getParent(uint8_t v, uint8_t *parent);
-uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]);
+bool checkConnectivity(uint8_t map[][CAVE_WIDTH]);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
 void monster();
@@ -1305,61 +1304,47 @@ void theOne(uint8_t boardId) {
   }
 }
 
-/* No memory for recursion */
-uint8_t getParent(uint8_t v, uint8_t *parent) {
-  uint8_t i, o;
-
-  for (i = v; parent[i] != i; i = parent[i]);
-  for (; parent[v] != v; v = o) {
-    o = parent[v];
-    parent[v] = i;
-  }
-
-  return i;
-}
-
-uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
-  uint8_t i, y, x, yy, xx, d;
+bool checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
+  uint8_t y, x, i, xx, yy, d;
   uint8_t yxType, yyxxType;
-  uint8_t visited = 0;
-  uint8_t unions = 1;
-  uint8_t parent[CAVE_HEIGHT * CAVE_WIDTH];
+  uint8_t added = true, good = true;
 
-  /* Parent array for the union find structure */
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      parent[y*CAVE_WIDTH+x] = y*CAVE_WIDTH+x;
+      if (map[y][x] == HOLE_ROOM || map[y][x] >= CORRIDOR)
+        continue;
+      map[y][x] |= 0x80;
+      goto first_room_found;
     }
   }
 
-  /* Union all the edges */
-  for (y = 0; y < CAVE_HEIGHT; y++) {
-    for (x = 0; x < CAVE_WIDTH; x++) {
-      /* Using 0x80 to signal it being visited */
-      yxType = map[y][x] & (~0x80);
-      if (yxType == HOLE_ROOM || yxType >= CORRIDOR)
-        continue;
-      map[y][x] |= 0x80;
-      for (i = 0; i < 4; i++) {
-        d = i;
-        xx = x;
-        yy = y;
-        do {
-          yy = yy + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
-          yy %= CAVE_HEIGHT;
-          xx = xx + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
-          xx %= CAVE_WIDTH;
-          yyxxType = map[yy][xx] & (~0x80);
-          map[yy][xx] |= 0x80;
-          if (yyxxType >= CORRIDOR)
-            d = pgm_read_byte(monsterCor[yyxxType-CORRIDOR]+d);
-        } while(yyxxType >= CORRIDOR);
+  first_room_found:
+  while(added) {
+    added = false;
+    for (y = 0; y < CAVE_HEIGHT; y++) {
+      for (x = 0; x < CAVE_WIDTH; x++) {
+        /* Using 0x80 to signal it being visited */
+        yxType = map[y][x] & (~0x80);
+        if (!(map[y][x] & 0x80) || yxType == HOLE_ROOM || yxType >= CORRIDOR)
+          continue;
 
-        /* Don't union holes */
-        if (yyxxType != HOLE_ROOM && getParent(
-              y*CAVE_WIDTH+x, parent) != getParent(yy*CAVE_WIDTH+xx, parent)) {
-          parent[parent[y*CAVE_WIDTH+x]] = parent[yy*CAVE_WIDTH+xx];
-          unions++;
+        for (i = 0; i < 4; i++) {
+          d = i;
+          xx = x;
+          yy = y;
+          do {
+            yy = yy + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
+            yy %= CAVE_HEIGHT;
+            xx = xx + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
+            xx %= CAVE_WIDTH;
+            yyxxType = map[yy][xx] & (~0x80);
+            if (!(map[yy][xx] & 0x80)) {
+              map[yy][xx] |= 0x80;
+              added = true;
+            }
+            if (yyxxType >= CORRIDOR)
+              d = pgm_read_byte(monsterCor[yyxxType-CORRIDOR]+d);
+          } while(yyxxType >= CORRIDOR);
         }
       }
     }
@@ -1367,15 +1352,13 @@ uint8_t checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
 
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (map[y][x] & 0x80)
-        visited++;
+      if (!(map[y][x] & 0x80))
+        good = false;
       map[y][x] &= ~0x80;
-      if (map[y][x] != HOLE_ROOM && map[y][x] < CORRIDOR)
-        unions--;
     }
   }
 
-  return (visited == CAVE_HEIGHT*CAVE_WIDTH && !unions);
+  return good;
 }
 
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
@@ -1610,8 +1593,7 @@ void monster() {
     for (n = 0; n < CAVE_WIDTH; n++) {
       DrawMap2(CAVE_OFFSET_X + n*2,
         CAVE_OFFSET_Y + i*2,
-        (const char*) pgm_read_word(monsterRooms
-          + (i == y && x == n? 8 : 0) + (map[i][n] & 0x7f)));
+        (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
     }
   }
 
