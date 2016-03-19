@@ -1652,7 +1652,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
                 ox, oy, 0, tileset);
             monsterFixSS(sSprites, 4);
             ssBlit(sSprites, 4);
-            WaitVsync(5);
+            WaitVsync(4);
           } while (ox != nx || oy != ny);
         }
       } while (mapGetType(map, x, y) >= CORRIDOR);
