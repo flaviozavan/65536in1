@@ -229,7 +229,8 @@ uint16_t held[2] = {0, 0},
 void controllerStart();
 void controllerEnd();
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst);
-void rtRotate90(const char src, char dst);
+void rtMirror(char src, char dst);
+void rtRotate90(char src, char dst);
 void rtReplaceColor(uint8_t t, char src, char dst);
 void rtDrawRectangle(uint8_t t, uint8_t x, uint8_t y, uint8_t w, uint8_t h,
     uint8_t color);
@@ -326,7 +327,17 @@ void copyTileToRam(const char *tt, uint8_t src, uint8_t dst) {
     rt[i] = pgm_read_byte(t+i);
 }
 
-void rtRotate90(const char src, char dst) {
+void rtMirror(char src, char dst) {
+  const char *srt = ram_tiles + 64*src;
+  char *drt = ram_tiles + 64*dst;
+  uint8_t i, j;
+
+  for (i = 0; i < 8; i++)
+    for (j = 0; j < 8; j++)
+      drt[i*8+j] = srt[i*8+(7-j)];
+}
+
+void rtRotate90(char src, char dst) {
   const char *srt = ram_tiles + 64*src;
   char *drt = ram_tiles + 64*dst;
   uint8_t i, j;
@@ -1564,7 +1575,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
   uint8_t d, yy, xx;
   uint8_t shooting = 0;
   int8_t nx, ny, ox, oy;
-  struct simpleSprite sSprites[7];
+  struct simpleSprite sSprites[8];
 
   mapSetVisible(map, x, y);
 
@@ -1637,27 +1648,30 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
         if (mapGetType(map, x, y) >= CORRIDOR)
           d = pgm_read_byte(monsterCor[mapGetType(map, x, y) - CORRIDOR]+d);
 
-        if (!shooting) {
-          do {
-            if (ox < nx)
-              ox++;
-            else if(ox > nx)
-              ox--;
-            else if(oy < ny)
-              oy++;
-            else if(oy > ny)
-              oy--;
-            monsterDrawMap(map, false);
-            ssLoadFromMap(guyMap, sSprites,
-                ox, oy, 0, tileset);
-            monsterFixSS(sSprites, 4);
-            ssBlit(sSprites, 4);
-            WaitVsync(4);
-          } while (ox != nx || oy != ny);
-        }
+        do {
+          if (ox < nx)
+            ox++;
+          else if(ox > nx)
+            ox--;
+          else if(oy < ny)
+            oy++;
+          else if(oy > ny)
+            oy--;
+          monsterDrawMap(map, false);
+          if (shooting)
+            ssLoadFromMap(bombMap, sSprites+4, ox, oy, 4, tileset);
+          else
+            ssLoadFromMap(guyMap, sSprites, ox, oy, 0, tileset);
+          monsterFixSS(sSprites + (shooting? 4 : 0), 4);
+          ssBlit(sSprites, shooting? 8 : 4);
+          WaitVsync(4);
+        } while (ox != nx || oy != ny);
       } while (mapGetType(map, x, y) >= CORRIDOR);
 
       if (shooting) {
+        ssUnblit(sSprites+4, 4);
+        ssSwitchMap(explosionMap, sSprites+4, tileset);
+        WaitVsync(30);
         if (mapGetType(map, x, y) == WUMPUS_ROOM)
           shooting = 2;
         x = xx;
@@ -1686,13 +1700,10 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
     WaitVsync(1);
     controllerEnd();
   }
-  controllerEnd();
 
   /* Draw the whole cave */
   monsterDrawMap(map, true);
-  ssLoadFromMap(guyMap, sSprites,
-      CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
-  ssBlit(sSprites, 4);
+  ssBlit(sSprites, (shooting? 8 : 4));
 
   while (1) {
     controllerStart();
@@ -1732,6 +1743,11 @@ void mapSetType(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
 void monster() {
   uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2];
   uint8_t x, y;
+
+  copyTileToRam(tileset, HIT_TILE, 20);
+  rtReplaceColor(20, SKY_COLOR, TRANSLUCENT_COLOR);
+  rtRotate90(20, 21);
+  rtMirror(21, 20);
 
   /* Print loading screen */
   ClearVram();

@@ -65,6 +65,8 @@
                 left="36" top="5" width="2" height="2"/>
             <map var-name="targetMap"
                 left="42" top="7" width="2" height="2"/>
+            <map var-name="bombMap"
+                left="36" top="7" width="2" height="2"/>
 
             <!-- Rain -->
             <map var-name="canonMap"
