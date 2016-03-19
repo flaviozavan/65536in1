@@ -61,12 +61,6 @@
                 left="38" top="5" width="2" height="2"/>
             <map var-name="guyMap"
                 left="36" top="5" width="2" height="2"/>
-            <map var-name="greenGuyMap"
-                left="36" top="7" width="2" height="2"/>
-            <map var-name="redGuyMap"
-                left="38" top="7" width="2" height="2"/>
-            <map var-name="bothGuyMap"
-                left="40" top="7" width="2" height="2"/>
             <map var-name="targetMap"
                 left="42" top="7" width="2" height="2"/>
 

@@ -20,7 +20,7 @@
 #define WUMPUS_ROOM 4
 #define HOLE_ROOM 5
 #define CORRIDOR 6
-#define CAVE_WIDTH 10
+#define CAVE_WIDTH 9
 #define CAVE_HEIGHT 9
 #define CAVE_OFFSET_X (VRAM_TILES_H/2-CAVE_WIDTH)
 #define CAVE_OFFSET_Y (VRAM_TILES_V/2-CAVE_HEIGHT)
@@ -158,14 +158,6 @@ const char * const monsterRooms[] PROGMEM = {
   holeMap,
   corridor1Map,
   corridor2Map,
-  guyMap,
-  redGuyMap,
-  greenGuyMap,
-  bothGuyMap,
-  wumpusMap,
-  holeMap,
-  corridor1Map,
-  corridor2Map
 };
 
 const char * const marumbiMaps[] PROGMEM = {
@@ -423,14 +415,18 @@ void ssUnblit(struct simpleSprite *ss, uint8_t len) {
 
 void ssBlit(struct simpleSprite *ss, uint8_t len) {
   uint8_t i, b;
-  char *rt, *bg;
+  char *rt;
+  const char *bg;
+  bool ram;
 
   while (len--) {
     rt = ram_tiles + 64*ss->rt;
-    bg = ram_tiles + 64*ss->bgTile;
+    ram = ss->bgTile < RAM_TILES_COUNT;
+    /* Current tileset info is not available, assume it's tileset */
+    bg = (ram? ram_tiles : tileset - 64 * RAM_TILES_COUNT) + 64*ss->bgTile;
     for (i = 0; i < 64; i++) {
       b = ss->fgSource == FLASH? pgm_read_byte(ss->fgTile+i) : ss->fgTile[i];
-      rt[i] = b == TRANSLUCENT_COLOR? bg[i] : b;
+      rt[i] = b == TRANSLUCENT_COLOR? (ram? bg[i] : pgm_read_byte(bg+i)) : b;
     }
     vram[ss->p] = ss->rt;
     ss++;
@@ -1411,6 +1407,7 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 void monster() {
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
   uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
+  struct simpleSprite sSprites[4];
 
   /* Print loading screen */
   ClearVram();
@@ -1503,11 +1500,13 @@ void monster() {
         if (map[i][n] & 0x80) {
           DrawMap2(CAVE_OFFSET_X + n*2,
             CAVE_OFFSET_Y + i*2,
-            (const char*) pgm_read_word(monsterRooms
-              + (i == y && x == n? 8 : 0) + (map[i][n] & 0x7f)));
+            (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
         }
       }
     }
+    ssLoadFromMap(guyMap, sSprites,
+        CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
+    ssBlit(sSprites, 4);
 
     /* Draw the targets if shooting */
     for (i = 0; l && i < 4; i++) {
