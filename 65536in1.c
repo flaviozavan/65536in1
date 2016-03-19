@@ -58,6 +58,15 @@
 #define COLOR_CHANGE_DELAY 2
 #define SKY_COLOR 226
 
+#define MAP_GET_VISIBLE(x,y) (map[(y)][(x)/2] & ((x) & 1? 0x80 : 0x8))
+#define MAP_SET_VISIBLE(x,y) (map[(y)][(x)/2] |= ((x) & 1? 0x80 : 0x8))
+#define MAP_SET_INVISIBLE(x,y) (map[(y)][(x)/2] &= ((x) & 1? 0x7f : 0xf7))
+#define MAP_GET_TYPE(x,y) ((x)&1? \
+    (map[(y)][(x)/2] & 0x70) >> 4 : map[(y)][(x)/2] & 0x7)
+#define MAP_SET_TYPE(x,y,t) (map[(y)][(x)/2] = (x)&1? \
+    (map[(y)][(x)/2] & 0xf) | (t << 4) \
+    : (map[(y)][(x)/2] & 0xf0) | ((t) & 0xf))
+
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
 const char strGrab[] PROGMEM = "GRAB";
@@ -261,13 +270,18 @@ uint8_t theOneLoadBoard(uint8_t id, uint8_t map[9][9]);
 bool theOneGetPossibleMove(uint8_t map[9][9], struct int8_t_pair peg,
     struct int8_t_pair *move);
 void theOne(uint8_t boardId);
-bool checkConnectivity(uint8_t map[][CAVE_WIDTH]);
+bool checkConnectivity(uint8_t map[][(CAVE_WIDTH+1)/2]);
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
-  uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
-void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole);
+  uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2]);
+void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
+    bool whole);
 void monsterFixSS(struct simpleSprite *ss, uint8_t len);
 void loadFrame(uint8_t bgColor);
 void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+void monsterGenerateLevel(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
+    uint8_t *px, uint8_t *py);
+void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
+    uint8_t x, uint8_t y);
 void monster();
 uint8_t testArray(uint8_t *m);
 void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
@@ -437,7 +451,7 @@ void ssBlit(struct simpleSprite *ss, uint8_t len) {
     rt = ram_tiles + 64*ss->rt;
     ram = ss->bgTile < RAM_TILES_COUNT;
     /* Current tileset info is not available, assume it's tileset */
-    bg = (ram? ram_tiles : tileset - 64 * RAM_TILES_COUNT) + 64*ss->bgTile;
+    bg = (ram? ram_tiles : tileset - 64*RAM_TILES_COUNT) + 64*ss->bgTile;
     for (i = 0; i < 64; i++) {
       b = ss->fgSource == FLASH? pgm_read_byte(ss->fgTile+i) : ss->fgTile[i];
       rt[i] = b == TRANSLUCENT_COLOR? (ram? bg[i] : pgm_read_byte(bg+i)) : b;
@@ -1320,16 +1334,16 @@ void theOne(uint8_t boardId) {
   }
 }
 
-bool checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
+bool checkConnectivity(uint8_t map[][(CAVE_WIDTH+1)/2]) {
   uint8_t y, x, i, xx, yy, d;
   uint8_t yxType, yyxxType;
   uint8_t added = true, good = true;
 
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (map[y][x] == HOLE_ROOM || map[y][x] >= CORRIDOR)
+      if (MAP_GET_TYPE(x, y) == HOLE_ROOM || MAP_GET_TYPE(x, y) >= CORRIDOR)
         continue;
-      map[y][x] |= 0x80;
+      MAP_SET_VISIBLE(x, y);
       goto first_room_found;
     }
   }
@@ -1339,9 +1353,10 @@ bool checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
     added = false;
     for (y = 0; y < CAVE_HEIGHT; y++) {
       for (x = 0; x < CAVE_WIDTH; x++) {
-        /* Using 0x80 to signal it being visited */
-        yxType = map[y][x] & (~0x80);
-        if (!(map[y][x] & 0x80) || yxType == HOLE_ROOM || yxType >= CORRIDOR)
+        /* Using visible to signal it being visited */
+        yxType = MAP_GET_TYPE(x, y);
+        if (!MAP_GET_VISIBLE(x, y)
+            || yxType == HOLE_ROOM || yxType >= CORRIDOR)
           continue;
 
         for (i = 0; i < 4; i++) {
@@ -1353,9 +1368,9 @@ bool checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
             yy %= CAVE_HEIGHT;
             xx = xx + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
             xx %= CAVE_WIDTH;
-            yyxxType = map[yy][xx] & (~0x80);
-            if (!(map[yy][xx] & 0x80)) {
-              map[yy][xx] |= 0x80;
+            yyxxType = MAP_GET_TYPE(xx, yy);
+            if (!MAP_GET_VISIBLE(xx, yy)) {
+              MAP_SET_VISIBLE(xx, yy);
               added = true;
             }
             if (yyxxType >= CORRIDOR)
@@ -1368,9 +1383,9 @@ bool checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
 
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (!(map[y][x] & 0x80))
+      if (!MAP_GET_VISIBLE(x, y))
         good = false;
-      map[y][x] &= ~0x80;
+      MAP_SET_INVISIBLE(x, y);
     }
   }
 
@@ -1378,8 +1393,8 @@ bool checkConnectivity(uint8_t map[][CAVE_WIDTH]) {
 }
 
 void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
-  uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]) {
-  uint8_t yy, xx, i, d;
+  uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2]) {
+  uint8_t yy, xx, i, d, t;
 
   for (i = 0; i < 4; i++) {
     yy = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+i);
@@ -1387,31 +1402,33 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
     xx = x + CAVE_WIDTH + pgm_read_byte(monsterDx+i);
     xx %= CAVE_WIDTH;
     d = i;
-    while (map[yy][xx] >= CORRIDOR) {
-      d = pgm_read_byte(monsterCor[map[yy][xx] - CORRIDOR]+d);
+    while (MAP_GET_TYPE(xx, yy) >= CORRIDOR) {
+      d = pgm_read_byte(monsterCor[MAP_GET_TYPE(xx, yy) - CORRIDOR]+d);
       yy = yy + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
       yy %= CAVE_HEIGHT;
       xx = xx + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
       xx %= CAVE_WIDTH;
     }
 
-    if (map[yy][xx] < BOTH_ROOM) {
-      map[yy][xx] |= f;
+    t = MAP_GET_TYPE(xx, yy);
+    if (t <= BOTH_ROOM) {
+      MAP_SET_TYPE(xx, yy, t | f);
       if (dist > 1)
         flagAround(yy, xx, f, dist - 1, map);
     }
   }
 }
 
-void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole) {
+void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
+    bool whole) {
   uint8_t i, n;
 
   for (i = 0; i < CAVE_HEIGHT; i++) {
     for (n = 0; n < CAVE_WIDTH; n++) {
-      if (whole || map[i][n] & 0x80) {
+      if (whole || MAP_GET_VISIBLE(n, i)) {
         DrawMap2(CAVE_OFFSET_X + n*2,
           CAVE_OFFSET_Y + i*2,
-          (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
+          (const char *) pgm_read_word(monsterRooms + MAP_GET_TYPE(n, i)));
       }
       else
         Fill(CAVE_OFFSET_X + n*2, CAVE_OFFSET_Y + i*2, 2, 2, 0);
@@ -1463,24 +1480,14 @@ void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
   Fill(x, y+h, w, 1, 35-RAM_TILES_COUNT);
   SetTile(x-1, y+h, 36-RAM_TILES_COUNT);
   Fill(x-1, y, 1, h, 37-RAM_TILES_COUNT);
-
 }
 
-void monster() {
-  uint8_t map[CAVE_HEIGHT][CAVE_WIDTH];
-  uint8_t i, n, t, l, x, y, d, wx, wy, yy, xx;
-  int8_t nx, ny, ox, oy;
-  struct simpleSprite sSprites[4];
+void monsterGenerateLevel(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
+    uint8_t *px, uint8_t *py) {
+  uint8_t n, l, i, t, y, x, tt;
 
-  /* Print loading screen */
-  ClearVram();
-  Print(7, 9, strGenerating);
-  Print(9, 14, strWait);
-
-  /* Generate a map */
-  DisableSoundEngine();
   generate_cave:
-  memset(map, 0, sizeof(map));
+  memset(map, 0, CAVE_HEIGHT*(CAVE_WIDTH+1)/2);
   /* Corridors */
   n = (random() % (CAVE_WIDTH*CAVE_HEIGHT)/4) + (CAVE_WIDTH*CAVE_HEIGHT)/2;
   l = CAVE_WIDTH * CAVE_HEIGHT;
@@ -1489,12 +1496,13 @@ void monster() {
     t = random() % l;
     for (y = 0; y < CAVE_HEIGHT; y++) {
       for (x = 0; x < CAVE_WIDTH; x++) {
-        if (!map[y][x] && !(t--)) goto tth_found;
+        if (!MAP_GET_TYPE(x, y) && !(t--)) goto tth_found;
       }
     }
     tth_found:
     l--;
-    map[y][x] = CORRIDOR + (random() & 1);
+    tt = CORRIDOR + (random() & 1);
+    MAP_SET_TYPE(x, y, tt);
   }
 
   /* Holes */
@@ -1504,12 +1512,12 @@ void monster() {
     t = random() % l;
     for (y = 0; y < CAVE_HEIGHT; y++) {
       for (x = 0; x < CAVE_WIDTH; x++) {
-        if (map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_hole;
+        if (MAP_GET_TYPE(x, y) <= BOTH_ROOM && !(t--)) goto tth_found_hole;
       }
     }
     tth_found_hole:
     l--;
-    map[y][x] = HOLE_ROOM;
+    MAP_SET_TYPE(x, y, HOLE_ROOM);
     /* Put the breeze on the adjacent rooms */
     flagAround(y, x, BREEZE_ROOM, 1, map);
   }
@@ -1518,13 +1526,11 @@ void monster() {
   t = random() % l;
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (map[y][x] <= BOTH_ROOM && !(t--)) goto tth_found_wumpus;
+      if (MAP_GET_TYPE(x, y) <= BOTH_ROOM && !(t--)) goto tth_found_wumpus;
     }
   }
   tth_found_wumpus:
-  map[y][x] = WUMPUS_ROOM;
-  wy = y;
-  wx = x;
+  MAP_SET_TYPE(x, y, WUMPUS_ROOM);
   /* Put the stench on the adjacent rooms */
   flagAround(y, x, STENCH_ROOM, 2, map);
 
@@ -1532,44 +1538,53 @@ void monster() {
   i = 0;
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (!map[y][x]) i++;
+      if (!MAP_GET_TYPE(x, y)) i++;
     }
   }
   t = random() % i;
   for (y = 0; y < CAVE_HEIGHT; y++) {
     for (x = 0; x < CAVE_WIDTH; x++) {
-      if (!map[y][x] && !(t--)) goto tth_found_guy;
+      if (!MAP_GET_TYPE(x, y) && !(t--)) goto tth_found_guy;
     }
   }
   /* This shouldn't happen, but just in case there are no clean rooms */
   goto generate_cave;
   tth_found_guy:
+  *px = x;
+  *py = y;
 
   /* Only accept connected graphs */
   if (!checkConnectivity(map)) goto generate_cave;
+}
 
-  EnableSoundEngine();
-  /* If the highest bit is set, the room is visible */
-  map[y][x] |= 0x80;
+void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
+    uint8_t x, uint8_t y) {
+  uint8_t d, yy, xx;
+  uint8_t shooting = 0;
+  int8_t nx, ny, ox, oy;
+  struct simpleSprite sSprites[7];
+
+  MAP_SET_VISIBLE(x, y);
 
   /* Process input */
-  l = 0;
   memset(vram, SKY_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
   drawFrame(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2);
   Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
 
   while (1) {
     /* Redraw */
-    monsterDrawMap(map, false);
-    ssLoadFromMap(guyMap, sSprites,
-        CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
-    ssBlit(sSprites, 4);
+    if (!shooting) {
+      monsterDrawMap(map, false);
+      ssLoadFromMap(guyMap, sSprites,
+          CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
+      ssBlit(sSprites, 4);
+    }
 
     /* Draw the targets if shooting */
-    for (i = 0; l && i < 4; i++) {
-      yy = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+i);
+    for (d = 0; shooting && d < 4; d++) {
+      yy = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
       yy %= CAVE_HEIGHT;
-      xx = x + CAVE_WIDTH + pgm_read_byte(monsterDx+i);
+      xx = x + CAVE_WIDTH + pgm_read_byte(monsterDx+d);
       xx %= CAVE_WIDTH;
 
       DrawMap2(CAVE_OFFSET_X + xx*2,
@@ -1577,7 +1592,7 @@ void monster() {
         targetMap);
     }
     /* End game */
-    if ((map[y][x] & 0x7f) >= WUMPUS_ROOM) break;
+    if (MAP_GET_TYPE(x, y) >= WUMPUS_ROOM) break;
 
     controllerStart();
     d = 0xff;
@@ -1595,7 +1610,7 @@ void monster() {
       d = 3;
     }
     else if (pressed[0] & BTN_A) {
-      l ^= 1;
+      shooting ^= 1;
     }
     else if (pressed[0] & BTN_SELECT) {
       return;
@@ -1615,13 +1630,12 @@ void monster() {
 
         y %= CAVE_HEIGHT;
         x %= CAVE_WIDTH;
-        map[y][x] |= 0x80;
+        MAP_SET_VISIBLE(x, y);
 
-        if ((map[y][x] & 0x7f) >= CORRIDOR)
-          d = pgm_read_byte(monsterCor[(map[y][x] & 0x7f) - CORRIDOR]+d);
+        if (MAP_GET_TYPE(x, y) >= CORRIDOR)
+          d = pgm_read_byte(monsterCor[MAP_GET_TYPE(x, y) - CORRIDOR]+d);
 
-        if (!l) {
-
+        if (!shooting) {
           do {
             if (ox < nx)
               ox++;
@@ -1639,15 +1653,13 @@ void monster() {
             WaitVsync(5);
           } while (ox != nx || oy != ny);
         }
-      } while ((map[y][x] & 0x7f) >= CORRIDOR);
+      } while (MAP_GET_TYPE(x, y) >= CORRIDOR);
 
-      /* Shooting */
-      if (l) {
-        if ((map[y][x] & 0x7f) != WUMPUS_ROOM) {
-          y = wy;
-          x = wx;
-        }
-        controllerEnd();
+      if (shooting) {
+        if (MAP_GET_TYPE(x, y) == WUMPUS_ROOM)
+          shooting = 2;
+        x = xx;
+        y = yy;
         break;
       }
     }
@@ -1657,19 +1669,15 @@ void monster() {
   }
 
   /* Print the result */
-  switch(map[y][x] & 0x7f) {
-    case WUMPUS_ROOM:
-      Print(6, 14, strAte);
-      break;
-
-    case HOLE_ROOM:
-      Print(6, 14, strFell);
-      break;
-
-    default:
-      Print(8, 6, strCongratulations);
-      Print(4, 14, strKill);
+  if (shooting == 2) {
+    Print(8, 6, strCongratulations);
+    Print(4, 14, strKill);
   }
+  else if (MAP_GET_TYPE(x, y) == HOLE_ROOM)
+    Print(6, 14, strFell);
+  else
+    Print(6, 14, strAte);
+
   while (1) {
     controllerStart();
     if (pressed[0] & BTN_START) break;
@@ -1690,7 +1698,23 @@ void monster() {
     WaitVsync(1);
     controllerEnd();
   }
-  controllerEnd();
+}
+
+void monster() {
+  uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2];
+  uint8_t x, y;
+
+  /* Print loading screen */
+  ClearVram();
+  Print(7, 9, strGenerating);
+  Print(9, 14, strWait);
+
+  /* Generate a map */
+  DisableSoundEngine();
+  monsterGenerateLevel(map, &x, &y);
+  EnableSoundEngine();
+
+  monsterPlay(map, x, y);
 }
 
 uint8_t testArray(uint8_t *m) {
