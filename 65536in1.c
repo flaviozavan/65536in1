@@ -229,6 +229,7 @@ uint16_t held[2] = {0, 0},
 void controllerStart();
 void controllerEnd();
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst);
+void rtRotate90(const char src, char dst);
 void rtReplaceColor(uint8_t t, char src, char dst);
 void rtDrawRectangle(uint8_t t, uint8_t x, uint8_t y, uint8_t w, uint8_t h,
     uint8_t color);
@@ -265,6 +266,7 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
   uint8_t map[CAVE_HEIGHT][CAVE_WIDTH]);
 void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole);
 void monsterFixSS(struct simpleSprite *ss, uint8_t len);
+void monsterLoadTiles();
 void monster();
 uint8_t testArray(uint8_t *m);
 void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
@@ -306,6 +308,16 @@ void copyTileToRam(const char *tt, uint8_t src, uint8_t dst) {
   char *rt = ram_tiles + 64*dst;
   for (uint8_t i = 0; i < 64; i++)
     rt[i] = pgm_read_byte(t+i);
+}
+
+void rtRotate90(const char src, char dst) {
+  const char *srt = ram_tiles + 64*src;
+  char *drt = ram_tiles + 64*dst;
+  uint8_t i, j;
+
+  for (i = 0; i < 8; i++)
+    for (j = 0; j < 8; j++)
+      drt[i*8+j] = srt[(7-j)*8+i];
 }
 
 void rtReplaceColor(uint8_t t, char src, char dst) {
@@ -1399,6 +1411,8 @@ void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][CAVE_WIDTH], bool whole) {
           CAVE_OFFSET_Y + i*2,
           (const char*) pgm_read_word(monsterRooms + (map[i][n] & 0x7f)));
       }
+      else
+        Fill(CAVE_OFFSET_X + n*2, CAVE_OFFSET_Y + i*2, 2, 2, 0);
     }
   }
 }
@@ -1422,6 +1436,18 @@ void monsterFixSS(struct simpleSprite *ss, uint8_t len) {
 
     ss->p = y*VRAM_TILES_H + x;
     ss->bgTile = vram[ss->p];
+  }
+}
+
+void monsterLoadTiles() {
+  uint8_t i;
+
+  copyTileToRam(tileset, BORDER_CORNER, 30);
+  copyTileToRam(tileset, BORDER_STRAIGHT, 31);
+
+  for (i = 0; i < 6; i += 2) {
+    rtRotate90(30+i, 30+i+2);
+    rtRotate90(31+i, 31+i+2);
   }
 }
 
@@ -1514,7 +1540,21 @@ void monster() {
   /* Process input */
   l = 0;
   memset(vram, SKY_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
+
+  SetTile(CAVE_OFFSET_X-1, CAVE_OFFSET_Y-1, 30-RAM_TILES_COUNT);
+  Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y-1, CAVE_WIDTH*2, 1, 31-RAM_TILES_COUNT);
+  SetTile(CAVE_OFFSET_X+CAVE_WIDTH*2, CAVE_OFFSET_Y-1, 32-RAM_TILES_COUNT);
+  Fill(CAVE_OFFSET_X+CAVE_WIDTH*2, CAVE_OFFSET_Y, 1, CAVE_HEIGHT*2,
+      33-RAM_TILES_COUNT);
+  SetTile(CAVE_OFFSET_X+CAVE_WIDTH*2, CAVE_OFFSET_Y+CAVE_HEIGHT*2,
+      34-RAM_TILES_COUNT);
+  Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y+CAVE_HEIGHT*2, CAVE_WIDTH*2, 1,
+      35-RAM_TILES_COUNT);
+  SetTile(CAVE_OFFSET_X-1, CAVE_OFFSET_Y+CAVE_HEIGHT*2, 36-RAM_TILES_COUNT);
+  Fill(CAVE_OFFSET_X-1, CAVE_OFFSET_Y, 1, CAVE_HEIGHT*2, 37-RAM_TILES_COUNT);
+
   Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
+
   while (1) {
     /* Redraw */
     monsterDrawMap(map, false);
@@ -1553,18 +1593,16 @@ void monster() {
     }
     else if (pressed[0] & BTN_A) {
       l ^= 1;
-      ClearVram();
     }
     else if (pressed[0] & BTN_SELECT) {
-      controllerEnd();
       return;
     }
 
     /* Moving */
     if (d != 0xff) {
+      yy = y;
+      xx = x;
       do {
-        yy = y;
-        xx = x;
         ox = CAVE_OFFSET_X+x*2;
         oy = CAVE_OFFSET_Y+y*2;
         y = y + CAVE_HEIGHT + pgm_read_byte(monsterDy+d);
@@ -1605,10 +1643,6 @@ void monster() {
         if ((map[y][x] & 0x7f) != WUMPUS_ROOM) {
           y = wy;
           x = wx;
-        }
-        else {
-          x = xx;
-          y = yy;
         }
         controllerEnd();
         break;
@@ -3033,6 +3067,7 @@ int main() {
           r = onePlayerMenu(0, 0);
           if (r == -1)
             goto beginning;
+          monsterLoadTiles();
           monster();
           break;
 
