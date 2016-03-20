@@ -274,8 +274,8 @@ void flagAround(uint8_t y, uint8_t x, uint8_t f, uint8_t dist,
 void monsterDrawMap(const uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
     bool whole);
 void monsterFixSS(struct simpleSprite *ss, uint8_t len);
-void loadFrame(uint8_t bgColor);
-void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+void loadFrame(uint8_t bgColor, uint8_t offset);
+void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t o);
 void monsterGenerateLevel(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
     uint8_t *px, uint8_t *py);
 void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
@@ -1091,7 +1091,7 @@ void slide() {
   copyTileToRam(marumbi, 0, 0);
   rtReplaceColor(0, MARUMBI_BLUE, DEFAULT_GRAY);
   memset(vram, 0, VRAM_TILES_H*VRAM_TILES_V);
-  drawFrame(3, 4, 6*4, 5*4);
+  drawFrame(3, 4, 6*4, 5*4, 30);
   for (i = 0; i < 16; i++) {
     if (m[i])
       DrawMap2((i & 3) * 6 + 3, (i >> 2) * 5 + 4,
@@ -1231,7 +1231,7 @@ void theOne(uint8_t boardId) {
 
   ClearVram();
   Fill(2, 5, 3*9-2, 2*9, WOODEN_TILE);
-  drawFrame(2, 5, 3*9-2, 2*9);
+  drawFrame(2, 5, 3*9-2, 2*9, 30);
   theOneDrawMap(map);
 
   while (pegs > 1 && moves) {
@@ -1488,28 +1488,26 @@ void monsterFixSS(struct simpleSprite *ss, uint8_t len) {
   }
 }
 
-void loadFrame(uint8_t bgColor) {
+void loadFrame(uint8_t bgColor, uint8_t offset) {
   uint8_t i;
 
-  copyTileToRam(tileset, BORDER_CORNER, 30);
-  rtReplaceColor(30, SKY_COLOR, bgColor);
-  copyTileToRam(tileset, BORDER_STRAIGHT, 31);
+  copyTileToRam(tileset, BORDER_CORNER, offset);
+  rtReplaceColor(offset, SKY_COLOR, bgColor);
+  copyTileToRam(tileset, BORDER_STRAIGHT, offset+1);
 
-  for (i = 0; i < 6; i += 2) {
-    rtRotate90(30+i, 30+i+2);
-    rtRotate90(31+i, 31+i+2);
-  }
+  for (i = 0; i < 6; i++)
+    rtRotate90(offset+i, offset+i+2);
 }
 
-void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
-  SetTile(x-1, y-1, 30-RAM_TILES_COUNT);
-  Fill(x, y-1, w, 1, 31-RAM_TILES_COUNT);
-  SetTile(x+w, y-1, 32-RAM_TILES_COUNT);
-  Fill(x+w, y, 1, h, 33-RAM_TILES_COUNT);
-  SetTile(x+w, y+h, 34-RAM_TILES_COUNT);
-  Fill(x, y+h, w, 1, 35-RAM_TILES_COUNT);
-  SetTile(x-1, y+h, 36-RAM_TILES_COUNT);
-  Fill(x-1, y, 1, h, 37-RAM_TILES_COUNT);
+void drawFrame(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t o) {
+  SetTile(x-1, y-1, o-RAM_TILES_COUNT);
+  Fill(x, y-1, w, 1, o+1-RAM_TILES_COUNT);
+  SetTile(x+w, y-1, o+2-RAM_TILES_COUNT);
+  Fill(x+w, y, 1, h, o+3-RAM_TILES_COUNT);
+  SetTile(x+w, y+h, o+4-RAM_TILES_COUNT);
+  Fill(x, y+h, w, 1, o+5-RAM_TILES_COUNT);
+  SetTile(x-1, y+h, o+6-RAM_TILES_COUNT);
+  Fill(x-1, y, 1, h, o+7-RAM_TILES_COUNT);
 }
 
 void monsterGenerateLevel(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
@@ -1598,7 +1596,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
 
   /* Process input */
   memset(vram, SKY_TILE+RAM_TILES_COUNT, VRAM_TILES_H*VRAM_TILES_V);
-  drawFrame(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2);
+  drawFrame(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 30);
   Fill(CAVE_OFFSET_X, CAVE_OFFSET_Y, CAVE_WIDTH*2, CAVE_HEIGHT*2, 0);
   FadeIn(3, true);
 
@@ -2206,12 +2204,12 @@ void rain(uint8_t players) {
 
   /* Draw the basic screen */
   ClearVram();
-  Fill(0, 5, 30, 19, SKY_TILE);
-  Fill(14, 0, 2, 28, PAINTED_TILE);
   for (i = 0; i < players; i++) {
     for (j = 0; j < 10; j++) {
       DrawMap2(3 + j + (15 * i), 6, canonMap);
     }
+    drawFrame(3+(15*i), 6, 10, 19, 20);
+    Fill(3+(15*i), 8, 10, 17, SKY_TILE);
     Print(3 + 15 * i, 4, strLives);
   }
   if (players == 1) {
@@ -3077,7 +3075,7 @@ int main() {
           if (r == -1)
             goto beginning;
           SetTileTable(marumbi);
-          loadFrame(DEFAULT_GRAY);
+          loadFrame(DEFAULT_GRAY, 30);
           slide();
           SetTileTable(tileset);
           break;
@@ -3085,7 +3083,7 @@ int main() {
         case 4:
           /* The One */
           theOneLoadTiles();
-          loadFrame(DEFAULT_GRAY);
+          loadFrame(DEFAULT_GRAY, 30);
           r = onePlayerMenu(0, NUM_THE_ONE_BOARDS);
           if (r == -1)
             goto beginning;
@@ -3108,7 +3106,7 @@ int main() {
           r = onePlayerMenu(0, 0);
           if (r == -1)
             goto beginning;
-          loadFrame(SKY_COLOR);
+          loadFrame(SKY_COLOR, 30);
           monster();
           break;
 
@@ -3124,6 +3122,8 @@ int main() {
         case 7:
           /* Rain */
           loadColoredNumbers();
+          /* Overwrite the crossed-out numbers */
+          loadFrame(DEFAULT_GRAY, 20);
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
