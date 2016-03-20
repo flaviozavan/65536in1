@@ -2336,7 +2336,7 @@ void array(uint8_t human) {
 
       if (s[1] == 0x7f) {
         if (m[1][p[1]] == p[1])
-          pressed[1] = BTN_RIGHT;
+          pressed[1] = m[1][p[1]^8] != (p[1]^8)? BTN_UP : BTN_RIGHT;
         else
           pressed[1] = BTN_A;
       }
@@ -2355,11 +2355,11 @@ void array(uint8_t human) {
     }
 
     for (i = 0; i < 2; i++) {
-      Fill(3*(p[i]%8)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, 0);
+      Fill(3*(p[i]&7)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, 0);
       if (pressed[i] & BTN_RIGHT)
-        p[i] = (p[i]&8) + (p[i]+1) % 8;
+        p[i] = (p[i]&8) + ((p[i]+1)&7);
       else if (pressed[i] & BTN_LEFT)
-        p[i] = (p[i]&8) + (p[i]+7) % 8;
+        p[i] = (p[i]&8) + ((p[i]+7)&7);
       else if (pressed[i] & BTN_UP || pressed[i] & BTN_DOWN)
         p[i] ^= 8;
       else if (pressed[i] & BTN_A) {
@@ -2376,12 +2376,12 @@ void array(uint8_t human) {
         s[i] = 0x7f;
 
       for (n = 0; n < 16; n++) {
-        printColoredByte2(3 * (n%8) + 4,
+        printColoredByte2(3 * (n&7) + 4,
           (i? 16 : 8) + (n < 8? 0 : 2), m[i][n],
           n == s[i]? BLUE_NUMBER
           : (n == m[i][n]? GREEN_NUMBER : WHITE_NUMBER));
       }
-      Fill(3*(p[i]%8)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, '('-' ');
+      Fill(3*(p[i]&7)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, '('-' ');
     }
 
     WaitVsync(1);
