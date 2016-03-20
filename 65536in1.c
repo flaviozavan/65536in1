@@ -127,8 +127,8 @@ const char strKeep[] PROGMEM = "KEEP";
 const char strTrade[] PROGMEM = "TRADE";
 const char strInsideDef[] PROGMEM = "WAS INSIDE CHEST";
 const char strCongrat[] PROGMEM = "CONGRATULATIONS";
-const char strPlayer1[] PROGMEM = "PLAYER 1:";
-const char strPlayer2[] PROGMEM = "PLAYER 2:";
+const char strPlayer1[] PROGMEM = "PLAYER 1";
+const char strPlayer2[] PROGMEM = "PLAYER 2";
 const char strGenerating[] PROGMEM = "GENERATING LEVEL";
 const char strWait[] PROGMEM = "PLEASE WAIT";
 const char strAte[] PROGMEM = "THE MONSTER ATE YOU";
@@ -2325,6 +2325,9 @@ void array(uint8_t human) {
 
   d = CPU_DELAY;
 
+  drawFrame(3, 8, 23, 4, 30);
+  drawFrame(3, 16, 23, 4, 30);
+
   while (!testArray(m[0]) && !testArray(m[1])) {
     controllerStart();
 
@@ -3135,6 +3138,7 @@ int main() {
         case 8:
           /* Array */
           loadColoredNumbers();
+          loadFrame(DEFAULT_GRAY, 30);
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
