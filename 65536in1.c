@@ -2372,6 +2372,8 @@ void array(uint8_t human) {
       }
       else if (pressed[i] & BTN_B)
         s[i] = 0x7f;
+      else if (pressed[i] & BTN_SELECT)
+        return;
 
       for (n = 0; n < 16; n++) {
         printColoredByte2(3 * (n&7) + 4,
