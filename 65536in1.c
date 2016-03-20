@@ -291,7 +291,7 @@ uint8_t mapGetType(const uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
 void mapSetType(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
     uint8_t x, uint8_t y, uint8_t t);
 void monster();
-uint8_t testArray(uint8_t *m);
+bool testArray(const int8_t *m);
 void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
 int8_t gridCheck(const int8_t l[3][3]);
 struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]);
@@ -299,7 +299,7 @@ void grid(uint8_t human);
 bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]);
 void survival(uint8_t players);
 void rain(uint8_t human);
-void sort(uint8_t human);
+void array(uint8_t human);
 void trollenLoadBaseTiles();
 void trollenLoadLevel(uint8_t n, struct trollenLevel *level);
 void trollenDrawLevel(const struct trollenLevel *level);
@@ -1781,12 +1781,12 @@ void monster() {
   monsterPlay(map, x, y);
 }
 
-uint8_t testArray(uint8_t *m) {
-  int i;
-  for (i = 1; i < 16; i++) {
-    if (m[i] < m[i - 1]) return 0;
-  }
-  return 1;
+bool testArray(const int8_t *m) {
+  int8_t i;
+  for (i = 1; i < 16; i++)
+    if (m[i] < m[i - 1])
+      return false;
+  return true;
 }
 
 int8_t gridCheck(const int8_t l[3][3]) {
@@ -2302,8 +2302,8 @@ void rain(uint8_t players) {
   controllerEnd();
 }
 
-void sort(uint8_t human) {
-  uint8_t m[2][16], i, n, p[2], s[2], d;
+void array(uint8_t human) {
+  int8_t m[2][16], i, n, p[2], s[2], d;
 
   /* Generate a random order */
   for (i = 0; i < 16; i++) m[0][i] = i;
@@ -2319,144 +2319,85 @@ void sort(uint8_t human) {
   }
   for (i = 0; i < 16; i++) m[1][i] = m[0][i];
   p[0] = p[1] = 0;
-  s[0] = s[1] = 0xff;
+  s[0] = s[1] = 0x7f;
 
-  /* Print the initial arrays */
   ClearVram();
   Print(10, 6, strPlayer1);
   Print(10, 14, strPlayer2);
-  for (i = 0; i < 8; i++) {
-    printColoredByte2(3 * i + 4,
-      8, m[0][i],
-      (i? WHITE_NUMBER : BLUE_NUMBER));
-    printColoredByte2(3 * i + 4,
-      10, m[0][i + 8],
-      WHITE_NUMBER);
 
-    printColoredByte2(3 * i + 4,
-      16, m[1][i],
-      (i? WHITE_NUMBER : BLUE_NUMBER));
-    printColoredByte2(3 * i + 4,
-      18, m[1][i + 8],
-      WHITE_NUMBER);
-  }
-
-  /* Initialize the AI delay */
   d = CPU_DELAY;
 
-  /* Process input */
-  while (1) {
+  while (!testArray(m[0]) && !testArray(m[1])) {
     controllerStart();
 
-    for (i = 0; i < 2; i++) {
-      n = p[i];
-      if (!i || human) {
-        if (pressed[i] & BTN_RIGHT) {
-          sort_press_right:
-          n = (p[i] + 1) & 0xf;
-          if (n == s[i]) n = (n + 1) & 0xf;
-        }
-        else if (pressed[i] & BTN_LEFT) {
-          sort_press_left:
-          n = (p[i] + 15) & 0xf;
-          if (n == s[i]) n = (n + 15) & 0xf;
-        }
-        else if (pressed[i] & BTN_A) {
-          sort_select:
-          if (s[i] == 0xff) {
-            printColoredByte2(3 * (p[i] & 7) + 4,
-              (p[i] < 8? 8 : 10) + (i? 8 : 0),
-              m[i][p[i]], GREEN_NUMBER);
-            s[i] = p[i];
-            p[i] = n = (p[i] + 15) & 0xf;
-          }
-          else {
-            m[i][s[i]] ^= m[i][p[i]];
-            m[i][p[i]] ^= m[i][s[i]];
-            m[i][s[i]] ^= m[i][p[i]];
+    /* AI */
+    if (!human && !(--d)) {
+      d = CPU_DELAY;
 
-            printColoredByte2(3 * (p[i] & 7) + 4,
-              (p[i] < 8? 8 : 10) + (i? 8 : 0),
-              m[i][p[i]], WHITE_NUMBER);
-            printColoredByte2(3 * (s[i] & 7) + 4,
-              (s[i] < 8? 8 : 10) + (i? 8 : 0),
-              m[i][s[i]], WHITE_NUMBER);
-
-            s[i] = 0xff;
-
-            if (testArray(m[i])) {
-              controllerEnd();
-              goto endSort;
-            }
-          }
-        }
-        else if (pressed[i] & BTN_B && s[i] != 0xff) {
-          printColoredByte2(3 * (s[i] & 7) + 4,
-            (s[i] < 8? 8 : 10) + (i? 8 : 0),
-            m[i][s[i]], WHITE_NUMBER);
-
-          s[i] = 0xff;
-        }
-        else if (!i && pressed[i] & BTN_SELECT) {
-          controllerEnd();
-          return;
-        }
-      }
-      /* AI */
-      else if (d) {
-        /* Delay the movements */
-        d--;
+      if (s[1] == 0x7f) {
+        if (m[1][p[1]] == p[1])
+          pressed[1] = BTN_RIGHT;
+        else
+          pressed[1] = BTN_A;
       }
       else {
-        d = CPU_DELAY;
-
-        /* Select a number in the wrong position */
-        if (s[i] == 0xff) {
-          if (m[i][p[i]] == p[i])
-            goto sort_press_right;
-          else
-            goto sort_select;
-        }
-        /* Put it in the right place */
+        if (m[1][s[1]] == p[1])
+          pressed[1] = BTN_A;
         else {
-          if (m[i][s[i]] != p[i])
-            if ((p[i] > m[i][s[i]] && p[i] - m[i][s[i]] < 8) ||
-              (p[i] < m[i][s[i]] && m[i][s[i]] - p[i] > 8)) {
-
-              goto sort_press_left;
-            }
-            else {
-              goto sort_press_right;
-            }
+          if ((m[1][s[1]] & 8) != (p[1] & 8))
+            pressed[1] = BTN_UP;
+          else if (p[1] > m[1][s[1]])
+            pressed[1] = BTN_LEFT;
           else
-            goto sort_select;
+            pressed[1] = BTN_RIGHT;
         }
       }
+    }
 
-      printColoredByte2(3 * (p[i] & 7) + 4,
-        (p[i] < 8? 8 : 10) + (i? 8 : 0),
-        m[i][p[i]], WHITE_NUMBER);
-      printColoredByte2(3 * (n & 7) + 4,
-        (n < 8? 8 : 10) + (i? 8 : 0),
-        m[i][n], BLUE_NUMBER);
-      p[i] = n;
+    for (i = 0; i < 2; i++) {
+      Fill(3*(p[i]%8)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, 0);
+      if (pressed[i] & BTN_RIGHT)
+        p[i] = (p[i]&8) + (p[i]+1) % 8;
+      else if (pressed[i] & BTN_LEFT)
+        p[i] = (p[i]&8) + (p[i]+7) % 8;
+      else if (pressed[i] & BTN_UP || pressed[i] & BTN_DOWN)
+        p[i] ^= 8;
+      else if (pressed[i] & BTN_A) {
+        if (s[i] == 0x7f)
+          s[i] = p[i];
+        else {
+          m[i][s[i]] ^= m[i][p[i]];
+          m[i][p[i]] ^= m[i][s[i]];
+          m[i][s[i]] ^= m[i][p[i]];
+          s[i] = 0x7f;
+        }
+      }
+      else if (pressed[i] & BTN_B)
+        s[i] = 0x7f;
+
+      for (n = 0; n < 16; n++) {
+        printColoredByte2(3 * (n%8) + 4,
+          (i? 16 : 8) + (n < 8? 0 : 2), m[i][n],
+          n == s[i]? BLUE_NUMBER
+          : (n == m[i][n]? GREEN_NUMBER : WHITE_NUMBER));
+      }
+      Fill(3*(p[i]%8)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, '('-' ');
     }
 
     WaitVsync(1);
     controllerEnd();
   }
-  endSort:
   ClearVram();
 
   Print(8, 14, strWins);
   SetTile(15, 14, WHITE_NUMBER + 1 + testArray(m[1]));
   while (1) {
     controllerStart();
-    if (pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START)
+      break;
     WaitVsync(1);
     controllerEnd();
   }
-  controllerEnd();
 }
 
 void trollenLoadBaseTiles() {
@@ -3195,7 +3136,7 @@ int main() {
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
-          sort(r);
+          array(r);
           break;
 
         case 9:
