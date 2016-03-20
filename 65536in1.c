@@ -3082,7 +3082,6 @@ int main() {
           SetTileTable(marumbi);
           loadFrame(DEFAULT_GRAY, 30);
           slide();
-          SetTileTable(tileset);
           break;
 
         case 4:
@@ -3160,6 +3159,7 @@ int main() {
       controllerEnd();
 
       FadeOut(3, true);
+      SetTileTable(tileset);
     }
   }
 
