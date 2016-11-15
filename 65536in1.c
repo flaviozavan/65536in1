@@ -1998,10 +1998,8 @@ void survival(uint8_t players) {
   ClearVram();
   for (uint8_t i = 0; i < 2; i++) {
     Fill(3+14*i, 8, 10, 16, SKY_TILE);
-    Fill(2+14*i, 7, 12, 1, BLOCK_TILE);
-    Fill(2+14*i, 24, 12, 1, BLOCK_TILE);
-    Fill(2+14*i, 8, 1, 16, BLOCK_TILE);
-    Fill(13+14*i, 8, 1, 16, BLOCK_TILE);
+    drawFrame(3+14*i, 8, 10, 17, 20);
+    Fill(3+14*i, 24, 10, 1, BLOCK_TILE);
     Print(2+14*i, 6, strScore);
   }
 
@@ -2167,7 +2165,7 @@ void rainShoot(uint8_t player, uint8_t key) {
   SetTile(xOffset+key, yOffset, 30-RAM_TILES_COUNT+key);
 }
 
-void rainRemove(uint8_t player, uint8_t key) {
+bool rainRemove(uint8_t player, uint8_t key) {
   const uint8_t yOffset = 8;
   const uint8_t xOffset = player? 18 : 3;
   uint8_t *vCell = vram + ((yOffset+14)*VRAM_TILES_H) + xOffset + key;
@@ -2175,9 +2173,11 @@ void rainRemove(uint8_t player, uint8_t key) {
   for (uint8_t y = yOffset+14; y >= yOffset; y--, vCell -= VRAM_TILES_H) {
     if (*vCell != RAM_TILES_COUNT + SKY_TILE) {
       *vCell = RAM_TILES_COUNT + HIT_TILE;
-      break;
+      return true;
     }
   }
+
+  return false;
 }
 
 void rain(uint8_t players) {
@@ -2252,8 +2252,7 @@ void rain(uint8_t players) {
       for (j = 0; j < 10; j++) {
         if (pressed[i] & buttonMap[j]) {
           if (falling[i][j]) {
-            rainRemove(i, j);
-            if (players == 1)
+            if (rainRemove(i, j) && players == 1)
               score++;
           }
         }
@@ -3117,6 +3116,8 @@ int main() {
         case 6:
           /* Survival */
           loadColoredNumbers();
+          /* Overwrite the crossed-out numbers */
+          loadFrame(DEFAULT_GRAY, 20);
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
