@@ -566,17 +566,20 @@ void greed(uint8_t human) {
         /* Choosing a pile */
         if (pressed[t] & BTN_RIGHT) {
           greed_move_right:
+          playSound(MOVE_SELECTION_PATCH);
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
           w = (w + 1) % 5;
           printColoredByte(5 + 5 * w, 24, array[w], BLUE_NUMBER);
         }
         else if (pressed[t] & BTN_LEFT) {
+          playSound(MOVE_SELECTION_PATCH);
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
           w = (10 + w - 1) % 5;
           printColoredByte(5 + 5 * w, 24, array[w], BLUE_NUMBER);
         }
         else if (pressed[t] & BTN_A && array[w]) {
           greed_select:
+          playSound(MOVE_SELECTION_PATCH);
           s = (t && !human? 2 : 1);
           v = array[w];
           printColoredByte(5 + 5 * w, 24, array[w], GREEN_NUMBER);
@@ -586,15 +589,18 @@ void greed(uint8_t human) {
       else {
         if (pressed[t] & BTN_DOWN && v) {
           greed_reduce:
+          playSound(TAKE_BATTERY_PATCH);
           Fill(3 + 5 * w, 21 - (--v << 1), 3, 2, 0);
           printColoredByte(5 + 5 * w, 24, v, GREEN_NUMBER);
         }
         else if (pressed[t] & BTN_UP && v < array[w]) {
+          playSound(PLACE_BATTERY_PATCH);
           DrawMap2(3 + 5 * w, 21 - (v << 1),
             (const char *) pgm_read_word(batteries + w));
           printColoredByte(5 + 5 * w, 24, ++v, GREEN_NUMBER);
         }
         else if (pressed[t] & BTN_B) {
+          playSound(PLACE_BATTERY_PATCH);
           for (i = 0; i < array[w]; i++) {
             DrawMap2(3 + 5 * w, 21 - (i << 1),
               (const char *) pgm_read_word(batteries + w));
@@ -604,6 +610,7 @@ void greed(uint8_t human) {
         }
         else if (pressed[t] & BTN_A && v < array[w]) {
           greed_apply:
+          playSound(TAKE_BATTERY_PATCH);
           array[w] = v;
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
           w = 0;
@@ -710,6 +717,7 @@ void greed(uint8_t human) {
   Fill(5, 4, 20, 1, 0);
   Print(8, 4, strWins);
   SetTile(15, 4, WHITE_NUMBER + 1 + !t);
+  playSound(!t && !human? LOSS_PATCH : VICTORY_PATCH);
 
   /* Wait one of the players to press start */
   while (1) {
