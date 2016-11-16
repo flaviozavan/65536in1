@@ -8,6 +8,7 @@
 #include "data/marumbi.inc"
 #include "data/trollen.inc"
 #include "data/theone.inc"
+#include "data/patches.inc"
 
 #define WHITE_NUMBER 16
 #define BLUE_NUMBER (-RAM_TILES_COUNT)
@@ -234,6 +235,7 @@ uint16_t held[2] = {0, 0},
 
 void controllerStart();
 void controllerEnd();
+void playSound(uint8_t i);
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst);
 void rtMirror(char src, char dst);
 void rtRotate90(char src, char dst);
@@ -324,6 +326,10 @@ void controllerStart() {
 void controllerEnd() {
   prev[0] = held[0];
   prev[1] = held[1];
+}
+
+void playSound(uint8_t i) {
+  TriggerFx(i, 0xff, true);
 }
 
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst) {
@@ -2871,6 +2877,9 @@ uint16_t topmenu() {
       nextColorChange = COLOR_CHANGE_DELAY;
     }
 
+    if (pressed[0] & (BTN_DOWN | BTN_UP | BTN_RIGHT | BTN_LEFT | BTN_START))
+      playSound(0);
+
     if (pressed[0] & BTN_DOWN) {
       if (i < 15) {
         SetTile(3, 8 + i++, 0);
@@ -2951,6 +2960,9 @@ int8_t twoPlayersMenu() {
   while (1) {
     controllerStart();
 
+    if (pressed[0] & (BTN_DOWN | BTN_UP | BTN_START))
+      playSound(0);
+
     if (pressed[0] & BTN_DOWN) {
       SetTile(10, 15 + i, 0);
       i = (i + 1) % 3;
@@ -2988,6 +3000,9 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
   while (1) {
     controllerStart();
 
+    if (pressed[0] & (BTN_DOWN | BTN_UP | BTN_RIGHT | BTN_LEFT | BTN_START))
+      playSound(0);
+
     SetTile(10, 16 + i, 0);
     if (pressed[0] & BTN_DOWN)
       i = (i + 1) & 1;
@@ -3024,11 +3039,10 @@ int main() {
   uint16_t game;
   int8_t r;
   uint8_t trollenLevel = 0;
-  /* InitMusicPlayer(patches); */
+  InitMusicPlayer(patch_struct);
   SetMasterVolume(0xff);
   SetTileTable(tileset);
   SetFontTilesIndex(0);
-  /* SetSpritesTileTable(sprite); */
 
   while (1) {
     beginning:
