@@ -1279,6 +1279,7 @@ void theOne(uint8_t boardId) {
       if ((nc.x != c.x || nc.y != c.y)) {
         if (nc.x >= 0 && nc.x < 9 && nc.y >= 0 && nc.y < 9
             && map[nc.y][nc.x] != OUTSIDE) {
+          playSound(MOVE_SELECTION_PATCH);
           map[c.y][c.x] &= 0xf;
           c = nc;
           map[c.y][c.x] |= (map[c.y][c.x] == HOLE
@@ -1288,8 +1289,15 @@ void theOne(uint8_t boardId) {
         else
           nc = c;
       }
-      else if (pressed[0] & BTN_A && (map[c.y][c.x] & GOOD_CURSOR))
-        peg = c;
+      else if (pressed[0] & BTN_A) {
+        if ((map[c.y][c.x] & GOOD_CURSOR)) {
+          peg = c;
+          playSound(PLACE_BATTERY_PATCH);
+        }
+        else {
+          playSound(TAKE_BATTERY_PATCH);
+        }
+      }
 
       WaitVsync(1);
       controllerEnd();
@@ -1316,13 +1324,16 @@ void theOne(uint8_t boardId) {
         nc.y++;
       else if (pressed[0] & BTN_LEFT)
         nc.x--;
-      else if (pressed[0] & BTN_B)
+      else if (pressed[0] & BTN_B) {
+        playSound(TAKE_BATTERY_PATCH);
         break;
+      }
 
       if ((nc.x != c.x || nc.y != c.y)) {
         if (nc.x >= 0 && nc.x < 9 && nc.y >= 0 && nc.y < 9
             && (nc.x != peg.x || nc.y != peg.y)
             && map[nc.y][nc.x] != OUTSIDE) {
+          playSound(MOVE_SELECTION_PATCH);
           map[c.y][c.x] &= 0xf;
           map[nc.y][nc.x] |= (map[nc.y][nc.x] == HOLE
               && theOneIsHoleGood(peg, nc, map)?
@@ -1333,8 +1344,11 @@ void theOne(uint8_t boardId) {
           nc = c;
         }
       }
-      else if (pressed[0] & BTN_A && (map[c.y][c.x] & GOOD_CURSOR)) {
-        hole = c;
+      else if (pressed[0] & BTN_A) {
+        if ((map[c.y][c.x] & GOOD_CURSOR))
+          hole = c;
+        else
+          playSound(TAKE_BATTERY_PATCH);
       }
 
       WaitVsync(1);
@@ -1346,6 +1360,7 @@ void theOne(uint8_t boardId) {
       map[hole.y][hole.x] = PEG;
       c = hole;
       pegs--;
+      playSound(GETS_PIECE_PATCH);
 
       if (peg.x > hole.x)
         map[peg.y][peg.x-1] = HOLE;
@@ -1371,6 +1386,7 @@ void theOne(uint8_t boardId) {
 
   theOneDrawMap(map);
   Print(8, 12, pegs == 1? strCongrat : strNoMoves);
+  playSound(pegs == 1? VICTORY_PATCH : LOSS_PATCH);
   for (bool done = false; !done; ) {
     controllerStart();
 
