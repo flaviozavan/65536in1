@@ -1872,6 +1872,7 @@ void grid(uint8_t players) {
     SetTile(15, 3, WHITE_NUMBER + p+1);
 
     if (p && players == 1) {
+      WaitVsync(13);
       DisableSoundEngine();
       struct int8_t_pair m = !turn?
         (struct int8_t_pair) {0, random() % 9} :gridGetMove(!p? 1 : -1, level);
@@ -1893,18 +1894,22 @@ void grid(uint8_t players) {
         else if (pressed[c] & BTN_UP && y) {
           gridDrawCursor(x, y, 0);
           gridDrawCursor(x, --y, SKY_TILE);
+          playSound(MOVE_SELECTION_PATCH);
         }
         else if (pressed[c] & BTN_RIGHT && x < 2) {
           gridDrawCursor(x, y, 0);
           gridDrawCursor(++x, y, SKY_TILE);
+          playSound(MOVE_SELECTION_PATCH);
         }
         else if (pressed[c] & BTN_LEFT && x) {
           gridDrawCursor(x, y, 0);
           gridDrawCursor(--x, y, SKY_TILE);
+          playSound(MOVE_SELECTION_PATCH);
         }
         else if (pressed[c] & BTN_DOWN && y < 2) {
           gridDrawCursor(x, y, 0);
           gridDrawCursor(x, ++y, SKY_TILE);
+          playSound(MOVE_SELECTION_PATCH);
         }
         else if (pressed[c] & BTN_A && !level[y][x]) {
           gridDrawCursor(x, y, 0);
@@ -1917,6 +1922,7 @@ void grid(uint8_t players) {
     }
 
     level[y][x] = !p? 1 : -1;
+    playSound(PLACE_BATTERY_PATCH);
     DrawMap2(6+7*x, 7+6*y, p? openChestMap : phoneMap);
     turn++;
   }
@@ -1926,9 +1932,11 @@ void grid(uint8_t players) {
     Print(7, 3, strWins);
     Fill(7, 3, 8, 1, 0);
     DrawMap2(10, 2, winner == -1? openChestMap : phoneMap);
+    playSound(players == 1 && winner == -1? LOSS_PATCH : VICTORY_PATCH);
   }
   else {
     Print(13, 3, strDraw);
+    playSound(LOSS_PATCH);
   }
 
   for (bool done = false; !done; ) {
