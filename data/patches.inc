@@ -106,9 +106,13 @@ const struct PatchStruct patch_struct[] PROGMEM = {
   {0, NULL, take_battery_patch, 0, 0},
   {0, NULL, victory_patch, 0, 0},
   {0, NULL, loss_patch, 0, 0},
+  {0, NULL, slide_horizontal_patch, 0, 0},
+  {0, NULL, slide_vertical_patch, 0, 0},
 };
 #define LOSS_PATCH 4
 #define MOVE_SELECTION_PATCH 0
 #define PLACE_BATTERY_PATCH 1
+#define SLIDE_HORIZONTAL_PATCH 5
+#define SLIDE_VERTICAL_PATCH 6
 #define TAKE_BATTERY_PATCH 2
 #define VICTORY_PATCH 3

@@ -1117,18 +1117,22 @@ void slide() {
     controllerStart();
 
     if (pressed[0] & BTN_UP && (p >> 2) < 3) {
+      playSound(SLIDE_VERTICAL_PATCH);
       switchSlide(p, p + 4, m);
       p += 4;
     }
     else if (pressed[0] & BTN_DOWN && p >> 2) {
+      playSound(SLIDE_VERTICAL_PATCH);
       switchSlide(p, p - 4, m);
       p -= 4;
     }
     else if (pressed[0] & BTN_LEFT && (p & 3) < 3) {
+      playSound(SLIDE_HORIZONTAL_PATCH);
       switchSlide(p, p + 1, m);
       p += 1;
     }
     else if (pressed[0] & BTN_RIGHT && p & 3) {
+      playSound(SLIDE_HORIZONTAL_PATCH);
       switchSlide(p, p - 1, m);
       p -= 1;
     }
@@ -1141,6 +1145,7 @@ void slide() {
 
   /* Winning screen */
   Fill(3, 4, 6, 5, 0);
+  playSound(VICTORY_PATCH);
   for (bool done = false; !done; ) {
     controllerStart();
 
