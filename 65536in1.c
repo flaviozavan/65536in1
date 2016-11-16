@@ -2165,6 +2165,7 @@ uint8_t rainMoveDown(uint8_t player) {
     }
     else {
       hits++;
+      playSound(HITS_FLOOR_PATCH);
       vRow[x] = RAM_TILES_COUNT + HIT_TILE;
       vRow[x+VRAM_TILES_H] = RAM_TILES_COUNT + CRACK_TILE;
     }
@@ -2255,6 +2256,7 @@ void rain(uint8_t players) {
         for (i = 0; i < players; i++) {
           rainShoot(i, nextKey);
           falling[i][nextKey]++;
+          playSound(CANNON_PATCH);
         }
 
         if (!(--nextFaster)) {
@@ -2279,8 +2281,11 @@ void rain(uint8_t players) {
       for (j = 0; j < 10; j++) {
         if (pressed[i] & buttonMap[j]) {
           if (falling[i][j]) {
-            if (rainRemove(i, j) && players == 1)
-              score++;
+            if (rainRemove(i, j)) {
+              playSound(EXPLOSION_PATCH);
+              if (players == 1)
+                score++;
+            }
           }
         }
       }
@@ -2305,15 +2310,18 @@ void rain(uint8_t players) {
     Print(10, 10, strGameOver);
     Print(10, 12, strScore);
     printColoredByte2(18, 12, score, GREEN_NUMBER);
+    playSound(LOSS_PATCH);
   }
   /* Announce the winner. */
   else {
     if (l[0] == l[1]) {
       Print(12, 12, strDraw);
+      playSound(LOSS_PATCH);
     }
     else {
       Print(8, 14, strWins);
       SetTile(15, 14, WHITE_NUMBER + 1 + (l[1] > l[0]));
+      playSound(VICTORY_PATCH);
     }
   }
 
