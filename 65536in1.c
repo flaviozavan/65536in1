@@ -2878,7 +2878,7 @@ uint16_t topmenu() {
     }
 
     if (pressed[0] & (BTN_DOWN | BTN_UP | BTN_RIGHT | BTN_LEFT | BTN_START))
-      playSound(0);
+      playSound(MOVE_SELECTION_PATCH);
 
     if (pressed[0] & BTN_DOWN) {
       if (i < 15) {
@@ -2961,7 +2961,7 @@ int8_t twoPlayersMenu() {
     controllerStart();
 
     if (pressed[0] & (BTN_DOWN | BTN_UP | BTN_START))
-      playSound(0);
+      playSound(MOVE_SELECTION_PATCH);
 
     if (pressed[0] & BTN_DOWN) {
       SetTile(10, 15 + i, 0);
@@ -3001,7 +3001,7 @@ int8_t onePlayerMenu(uint8_t level, uint8_t levels) {
     controllerStart();
 
     if (pressed[0] & (BTN_DOWN | BTN_UP | BTN_RIGHT | BTN_LEFT | BTN_START))
-      playSound(0);
+      playSound(MOVE_SELECTION_PATCH);
 
     SetTile(10, 16 + i, 0);
     if (pressed[0] & BTN_DOWN)
