@@ -82,6 +82,12 @@ const char slide_vertical_patch[] PROGMEM = {
   0, PC_ENV_SPEED, -80,
   4, PATCH_END,
 };
+const char square_piano[] PROGMEM = {
+  0, PC_WAVE, 9,
+  0, PC_ENV_SPEED, -15,
+  4, PC_ENV_SPEED, -7,
+  0, PATCH_END,
+};
 const char take_battery_patch[] PROGMEM = {
   0, PC_WAVE, 2,
   0, PC_ENV_SPEED, -32,
@@ -101,6 +107,8 @@ const char victory_patch[] PROGMEM = {
   16, PATCH_END,
 };
 const struct PatchStruct patch_struct[] PROGMEM = {
+  {0, NULL, square_piano, 0, 0},
+  {0, NULL, square_piano, 0, 0},
   {0, NULL, move_selection_patch, 0, 0},
   {0, NULL, place_battery_patch, 0, 0},
   {0, NULL, take_battery_patch, 0, 0},
@@ -113,14 +121,15 @@ const struct PatchStruct patch_struct[] PROGMEM = {
   {0, NULL, hits_floor_patch, 0, 0},
   {0, NULL, gets_piece_patch, 0, 0},
 };
-#define CANNON_PATCH 7
-#define EXPLOSION_PATCH 8
-#define GETS_PIECE_PATCH 10
-#define HITS_FLOOR_PATCH 9
-#define LOSS_PATCH 4
-#define MOVE_SELECTION_PATCH 0
-#define PLACE_BATTERY_PATCH 1
-#define SLIDE_HORIZONTAL_PATCH 5
-#define SLIDE_VERTICAL_PATCH 6
-#define TAKE_BATTERY_PATCH 2
-#define VICTORY_PATCH 3
+#define CANNON_PATCH 8
+#define EXPLOSION_PATCH 9
+#define GETS_PIECE_PATCH 11
+#define HITS_FLOOR_PATCH 10
+#define LOSS_PATCH 5
+#define MOVE_SELECTION_PATCH 1
+#define PLACE_BATTERY_PATCH 2
+#define SLIDE_HORIZONTAL_PATCH 6
+#define SLIDE_VERTICAL_PATCH 7
+#define SQUARE_PIANO 0
+#define TAKE_BATTERY_PATCH 3
+#define VICTORY_PATCH 4

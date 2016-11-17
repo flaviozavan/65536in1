@@ -9,6 +9,7 @@
 #include "data/trollen.inc"
 #include "data/theone.inc"
 #include "data/patches.inc"
+#include "data/zipzipzip.inc"
 
 #define WHITE_NUMBER 16
 #define BLUE_NUMBER (-RAM_TILES_COUNT)
@@ -3088,6 +3089,7 @@ int main() {
   SetMasterVolume(0xff);
   SetTileTable(tileset);
   SetFontTilesIndex(0);
+  StartSong(zipzipzip);
 
   while (1) {
     beginning:
@@ -3118,7 +3120,9 @@ int main() {
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
+          StopSong();
           grid(r+1);
+          ResumeSong();
           break;
 
         case 2:
