@@ -799,10 +799,14 @@ void rich() {
   for (bool done = false; !done; ) {
     controllerStart();
 
-    if (pressed[0] & BTN_LEFT)
+    if (pressed[0] & BTN_LEFT) {
       s = (TOTAL_CHESTS - 1+ s) % TOTAL_CHESTS;
-    else if (pressed[0] & BTN_RIGHT)
+      playSound(MOVE_SELECTION_PATCH);
+    }
+    else if (pressed[0] & BTN_RIGHT) {
       s = (s + 1) % TOTAL_CHESTS;
+      playSound(MOVE_SELECTION_PATCH);
+    }
     else if (pressed[0] & BTN_SELECT)
       return;
     else if (pressed[0] & BTN_A)
@@ -814,6 +818,7 @@ void rich() {
     controllerEnd();
   }
   available[s] = 0;
+  playSound(PLACE_BATTERY_PATCH);
 
   left = 25;
   r = 0;
@@ -838,14 +843,22 @@ void rich() {
 
       printColoredByte2(5+5*(i%5), 5+4*(i/5), screenChest[i], WHITE_NUMBER);
 
-      if (pressed[0] & BTN_RIGHT && i < left-1)
+      if (pressed[0] & BTN_RIGHT && i < left-1) {
         i++;
-      else if (pressed[0] & BTN_LEFT && i > 0)
+        playSound(MOVE_SELECTION_PATCH);
+      }
+      else if (pressed[0] & BTN_LEFT && i > 0) {
         i--;
-      else if (pressed[0] & BTN_UP && i >= 5)
+        playSound(MOVE_SELECTION_PATCH);
+      }
+      else if (pressed[0] & BTN_UP && i >= 5) {
         i -= 5;
-      else if (pressed[0] & BTN_DOWN && i < left-5)
+        playSound(MOVE_SELECTION_PATCH);
+      }
+      else if (pressed[0] & BTN_DOWN && i < left-5) {
         i += 5;
+        playSound(MOVE_SELECTION_PATCH);
+      }
       else if (pressed[0] & BTN_A)
         done = true;
       else if (pressed[0] & BTN_SELECT)
@@ -856,6 +869,7 @@ void rich() {
       WaitVsync(1);
       controllerEnd();
     }
+    playSound(PLACE_BATTERY_PATCH);
 
     /* Open the chest */
     i = screenChest[i];
@@ -869,6 +883,7 @@ void rich() {
     WaitVsync(60);
     DrawMap2(13, 12, openChestMap);
     printMoney(19, 10, pgm_read_dword(prizes + order[i]), WHITE_NUMBER);
+    playSound(order[i] > 13? LOSS_PATCH : VICTORY_PATCH);
 
     for (bool done = false; !done; ) {
       controllerStart();
@@ -933,6 +948,7 @@ void rich() {
           SetTile(10, 15 + n, 0);
           n ^= 1;
           SetTile(10, 15 + n, ARROW_TILE);
+          playSound(MOVE_SELECTION_PATCH);
         }
         else if (pressed[0] & BTN_SELECT)
           return;
@@ -940,6 +956,7 @@ void rich() {
         WaitVsync(1);
         controllerEnd();
       }
+      playSound(PLACE_BATTERY_PATCH);
 
       if (n) {
         s ^= i;
@@ -961,6 +978,7 @@ void rich() {
       DrawMap2(13, 12, openChestMap);
       printMoney(19, 10, pgm_read_dword(prizes + order[i]),
         WHITE_NUMBER);
+      playSound(order[i] > 13? LOSS_PATCH : VICTORY_PATCH);
 
       /* Wait for the input */
       for (bool done = false; !done; ) {
@@ -990,7 +1008,9 @@ void rich() {
       /* Banker animation */
       ClearVram();
       DrawMap2(13, 13, phoneMap);
-      WaitVsync(60);
+      playSound(PHONE_PATCH);
+      WaitVsync(120);
+      playSound(PHONE_PATCH);
       Print(6, 4, strPhone);
       WaitVsync(60);
       Print(8, 5, strBanker);
@@ -1018,6 +1038,7 @@ void rich() {
           SetTile(10, 18 + i, 0);
           i ^= 1;
           SetTile(10, 18 + i, ARROW_TILE);
+          playSound(MOVE_SELECTION_PATCH);
         }
         else if (pressed[0] & BTN_SELECT)
           return;
@@ -1026,9 +1047,11 @@ void rich() {
         controllerEnd();
       }
     }
+    playSound(PLACE_BATTERY_PATCH);
   }
 
   ClearVram();
+  playSound(VICTORY_PATCH);
   Print(8, 6, strCongrat);
   Print(10, 7, strReceived);
   printMoney(20, 9, r, WHITE_NUMBER);

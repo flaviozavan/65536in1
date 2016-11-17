@@ -120,16 +120,18 @@ const struct PatchStruct patch_struct[] PROGMEM = {
   {0, NULL, explosion_patch, 0, 0},
   {0, NULL, hits_floor_patch, 0, 0},
   {0, NULL, gets_piece_patch, 0, 0},
+  {0, NULL, phone_patch, 0, 0},
 };
-#define CANNON_PATCH 8
-#define EXPLOSION_PATCH 9
-#define GETS_PIECE_PATCH 11
-#define HITS_FLOOR_PATCH 10
-#define LOSS_PATCH 5
-#define MOVE_SELECTION_PATCH 1
-#define PLACE_BATTERY_PATCH 2
-#define SLIDE_HORIZONTAL_PATCH 6
-#define SLIDE_VERTICAL_PATCH 7
+#define CANNON_PATCH 9
+#define EXPLOSION_PATCH 10
+#define GETS_PIECE_PATCH 12
+#define HITS_FLOOR_PATCH 11
+#define LOSS_PATCH 6
+#define MOVE_SELECTION_PATCH 2
+#define PHONE_PATCH 13
+#define PLACE_BATTERY_PATCH 3
+#define SLIDE_HORIZONTAL_PATCH 7
+#define SLIDE_VERTICAL_PATCH 8
 #define SQUARE_PIANO 0
-#define TAKE_BATTERY_PATCH 3
-#define VICTORY_PATCH 4
+#define TAKE_BATTERY_PATCH 4
+#define VICTORY_PATCH 5
