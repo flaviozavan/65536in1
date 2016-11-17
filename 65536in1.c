@@ -59,6 +59,9 @@
 #define FLASH 1
 #define COLOR_CHANGE_DELAY 2
 #define SKY_COLOR 226
+#define TOTAL_CAT_TILES 8
+#define CAT_ANIMATION_DELAY 20
+#define CAT_MOVE_DELAY 4
 
 const char strGreed[] PROGMEM = "GREED";
 const char strPiles[] PROGMEM = "PILES";
@@ -200,6 +203,16 @@ const uint8_t monsterCor[2][4] PROGMEM = {
   {3, 2, 1, 0}
 };
 
+const uint8_t catAnimationPixels[][2] PROGMEM = {
+  {1, 9},
+  {15, 14},
+  {62, 54},
+  {0, 0},
+  {6, 14},
+  {8, 9},
+  {57, 49},
+};
+
 struct int8_t_pair {
   int8_t x, y;
 };
@@ -299,7 +312,8 @@ void gridDrawCursor(int8_t x, int8_t y, uint8_t tile);
 int8_t gridCheck(const int8_t l[3][3]);
 struct int8_t_pair gridGetMove(int8_t p, int8_t l[3][3]);
 void grid(uint8_t human);
-bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]);
+void animateCat();
+bool survivalMoveDown(uint8_t p, int8_t height[2][10]);
 void survival(uint8_t players);
 void rain(uint8_t human);
 void array(uint8_t human);
@@ -1995,7 +2009,18 @@ void grid(uint8_t players) {
   }
 }
 
-bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]) {
+void animateCat() {
+  for (uint8_t i = 0; i < 7; i++) {
+    uint8_t a = pgm_read_byte(catAnimationPixels[i]);
+    uint8_t b = pgm_read_byte(catAnimationPixels[i]+1);
+    char *rt = ram_tiles + 64*i;
+    rt[a] ^= rt[b];
+    rt[b] ^= rt[a];
+    rt[a] ^= rt[b];
+  }
+}
+
+bool survivalMoveDown(uint8_t p, int8_t height[2][10]) {
   const uint8_t yOffset = 8;
   const uint8_t xOffset = p? 17 : 3;
   uint8_t *vRow = vram + ((yOffset+16)*VRAM_TILES_H) + xOffset;
@@ -2006,10 +2031,6 @@ bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]) {
     if (!height[p][i])
       cleaning = false;
   }
-  if (!cleaning)
-    for (uint8_t i = 0; i < 10; i++) {
-      next[p][i] = 127;
-    }
 
   for (uint8_t y = 0; y < 16; y++) {
     vRow = vTopRow;
@@ -2018,13 +2039,13 @@ bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]) {
       if (cleaning)
         vRow[x] = vTopRow[x];
       else if (y > height[p][x]) {
-        vRow[x] = vTopRow[x] == RAM_TILES_COUNT+ABOUT_TILE?
+        vRow[x] = vTopRow[x] == RAM_TILES_COUNT+ABOUT_TILE
+          || vTopRow[x] < TOTAL_CAT_TILES?
           RAM_TILES_COUNT+SKY_TILE : vTopRow[x];
-        if (vRow[x] == RAM_TILES_COUNT+BLOCK_TILE && next[p][x] == 127)
-          next[p][x] = y;
       }
       else if (y == height[p][x] && vTopRow[x] != RAM_TILES_COUNT+SKY_TILE) {
-        vRow[x] = vTopRow[x];
+        vRow[x] = vTopRow[x] < TOTAL_CAT_TILES?
+          RAM_TILES_COUNT+SKY_TILE : vTopRow[x];
         if (vRow[x] == RAM_TILES_COUNT+BLOCK_TILE) {
           height[p][x]++;
           vTopRow[x] = RAM_TILES_COUNT+SKY_TILE;
@@ -2035,7 +2056,6 @@ bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]) {
   if (cleaning)
     for (uint8_t i = 0; i < 10; i++) {
       height[p][i]--;
-      next[p][i]--;
     }
 
   Fill(xOffset, yOffset, 10, 1, SKY_TILE);
@@ -2046,10 +2066,8 @@ bool survivalMoveDown(uint8_t p, int8_t height[2][10], int8_t next[2][10]) {
 void survival(uint8_t players) {
   uint16_t score[2] = {0, 0};
   bool alive[2] = {true, players > 1};
-  uint8_t cat[2] = {4, 4};
-  uint8_t lastY[2] = {23, 23};
+  uint8_t cat[2][2] = {{4, 23}, {4, 23}};
   int8_t height[2][10];
-  int8_t next[2][10];
   int8_t about = -1;
   uint8_t movementDelay = MOVE_DELAY;
   uint8_t shotDelay = SHOT_DELAY;
@@ -2059,6 +2077,10 @@ void survival(uint8_t players) {
   uint8_t nextFaster = fasterDelay;
   uint8_t nextBlink = BLINK_DELAY;
   uint8_t blinkState = 0;
+  uint8_t catAnimation = CAT_ANIMATION_DELAY;
+  uint8_t nextMove[2] = {0, 0};
+  uint8_t catDir[2] = {1, 1};
+  int8_t moving[2] = {0, 0};
 
   memset(height, 0, sizeof(height));
 
@@ -2069,6 +2091,16 @@ void survival(uint8_t players) {
     Fill(3+14*i, 24, 10, 1, BLOCK_TILE);
     Print(2+14*i, 6, strScore);
   }
+
+  /* Build the cat */
+  copyTileToRam(tileset, CAT_TILE, 1);
+  rtRotate90(1, 0);
+  rtRotate90(0, 2);
+  rtRotate90(2, 0);
+  rtRotate90(1, 2);
+  rtMirror(0, 4);
+  rtMirror(1, 5);
+  rtMirror(2, 6);
 
   while (alive[0] || alive[1]) {
     controllerStart();
@@ -2104,8 +2136,8 @@ void survival(uint8_t players) {
         if (!alive[i])
           continue;
 
-        if (survivalMoveDown(i, height, next))
-          lastY[i]--;
+        if (survivalMoveDown(i, height))
+          cat[i][1]--;
       }
 
       if (!nextShot) {
@@ -2133,37 +2165,87 @@ void survival(uint8_t players) {
       if (!alive[p])
         continue;
 
-      uint8_t x = 3+14*p+cat[p];
-      uint8_t y = lastY[p];
-      uint8_t tile = vram[y*VRAM_TILES_H+x];
+      uint8_t x = 3+14*p+cat[p][0];
+      uint8_t y = cat[p][1];
+      uint8_t *tile = vram + (y*VRAM_TILES_H+x);
 
-      if (tile == RAM_TILES_COUNT+CAT_TILE)
+      if (*tile < TOTAL_CAT_TILES)
         SetTile(x, y, SKY_TILE);
-      else if (tile == RAM_TILES_COUNT+BLOCK_TILE) {
-        alive[p] = false;
-        SetTile(x, y+1, BLOODY_BLOCK_TILE);
-        continue;
+      else if (*tile == RAM_TILES_COUNT+BLOCK_TILE) {
+        if (*(tile+VRAM_TILES_H) == RAM_TILES_COUNT+BLOCK_TILE) {
+          alive[p] = false;
+          SetTile(x, y+1, BLOODY_BLOCK_TILE);
+          continue;
+        }
+        else {
+          moving[p] = 0;
+          catDir[p] = (catDir[p] & 0x4) | 0x1;
+          cat[p][1]++;
+          tile = vram + (y*VRAM_TILES_H+x);
+        }
       }
 
-      if (pressed[p] & BTN_LEFT && cat[p]
-          && next[p][cat[p]] > height[p][cat[p]-1])
-        cat[p]--;
-      else if (pressed[p] & BTN_RIGHT && cat[p] < 9
-          && next[p][cat[p]] > height[p][cat[p]+1])
-        cat[p]++;
+      bool falling = !moving[p]
+        && (*(tile+VRAM_TILES_H) != RAM_TILES_COUNT+BLOCK_TILE);
+      if (falling || (moving[p] && !(--nextMove[p]))) {
+        if (falling || !(catDir[p] & 0x3)) {
+          if (*(tile+VRAM_TILES_H) == RAM_TILES_COUNT+BLOCK_TILE) {
+            moving[p] = 0;
+            catDir[p] = (catDir[p] & 0x4) | 0x1;
+            falling = false;
+          }
+          else
+            cat[p][1]++;
+        }
+        else if (*(tile+moving[p]) != RAM_TILES_COUNT+BLOCK_TILE) {
+          cat[p][0] += moving[p];
+          if (*(tile+VRAM_TILES_H+moving[p]) == RAM_TILES_COUNT+BLOCK_TILE) {
+            catDir[p] = (catDir[p] & 0x4) | 0x1;
+            moving[p] = 0;
+          }
+          else
+            catDir[p] &= 0x4;
+        }
+        else if ((catDir[p] & 0x3) == 1)
+          catDir[p] = (catDir[p] & 0x4) | 0x2;
+        else if (*(tile-VRAM_TILES_H) != RAM_TILES_COUNT+BLOCK_TILE)
+          cat[p][1]--;
+        else {
+          catDir[p] = (catDir[p] & 0x4) | 0x1;
+          moving[p] = 0;
+          falling = *(tile+VRAM_TILES_H) != RAM_TILES_COUNT+BLOCK_TILE;
+        }
+        nextMove[p] = CAT_MOVE_DELAY;
+      }
 
-      x = 3+14*p+cat[p];
-      y = 23-height[p][cat[p]];
-      tile = vram[y*VRAM_TILES_H+x];
-      if (tile == RAM_TILES_COUNT+RED_BALL_TILE)
+      if (!falling && !moving[p]) {
+        if (pressed[p] & BTN_LEFT && cat[p][0]) {
+          catDir[p] &= 3;
+          moving[p] = -1;
+          nextMove[p] = CAT_MOVE_DELAY;
+        }
+        else if (pressed[p] & BTN_RIGHT && cat[p][0] < 9) {
+          catDir[p] |= 4;
+          moving[p] = 1;
+          nextMove[p] = CAT_MOVE_DELAY;
+        }
+      }
+
+      x = 3+14*p+cat[p][0];
+      y = cat[p][1];
+      tile = vram + (y*VRAM_TILES_H+x);
+      if (*tile == RAM_TILES_COUNT+RED_BALL_TILE)
         score[p]++;
-      else if (tile == RAM_TILES_COUNT+GREEN_BALL_TILE)
+      else if (*tile == RAM_TILES_COUNT+GREEN_BALL_TILE)
         score[p] += 3;
-      SetTile(x, y, CAT_TILE);
+      SetTile(x, y, catDir[p]-RAM_TILES_COUNT);
 
       printColoredShort(13+14*p, 6, score[p], GREEN_NUMBER);
+    }
 
-      lastY[p] = y;
+    if (!(--catAnimation)) {
+      animateCat();
+      catAnimation = CAT_ANIMATION_DELAY;
     }
 
     WaitVsync(1);
