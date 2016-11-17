@@ -2429,6 +2429,13 @@ void array(uint8_t human) {
       }
     }
 
+    if ((pressed[0] | pressed[1]) & (BTN_RIGHT | BTN_LEFT | BTN_UP | BTN_DOWN))
+      playSound(MOVE_SELECTION_PATCH);
+    else if ((pressed[0] | pressed[1]) & BTN_A)
+      playSound(PLACE_BATTERY_PATCH);
+    else if ((pressed[0] | pressed[1]) & BTN_B)
+      playSound(TAKE_BATTERY_PATCH);
+
     for (i = 0; i < 2; i++) {
       Fill(3*(p[i]&7)+3, (i? 16 : 8) + (p[i] < 8? 1 : 3), 2, 1, 0);
       if (pressed[i] & BTN_RIGHT)
@@ -2441,9 +2448,11 @@ void array(uint8_t human) {
         if (s[i] == 0x7f)
           s[i] = p[i];
         else {
-          m[i][s[i]] ^= m[i][p[i]];
-          m[i][p[i]] ^= m[i][s[i]];
-          m[i][s[i]] ^= m[i][p[i]];
+          if (s[i] != p[i]) {
+            m[i][s[i]] ^= m[i][p[i]];
+            m[i][p[i]] ^= m[i][s[i]];
+            m[i][s[i]] ^= m[i][p[i]];
+          }
           s[i] = 0x7f;
         }
       }
@@ -2468,6 +2477,7 @@ void array(uint8_t human) {
 
   Print(8, 14, strWins);
   SetTile(15, 14, WHITE_NUMBER + 1 + testArray(m[1]));
+  playSound(human || testArray(m[0])? VICTORY_PATCH : LOSS_PATCH);
   while (1) {
     controllerStart();
     if (pressed[0] & BTN_START)
@@ -3109,7 +3119,7 @@ int main() {
   int8_t r;
   uint8_t trollenLevel = 0;
   InitMusicPlayer(patch_struct);
-  SetMasterVolume(0xff);
+  SetMasterVolume(0x7f);
   SetTileTable(tileset);
   SetFontTilesIndex(0);
   StartSong(zipzipzip);
