@@ -2130,6 +2130,7 @@ void survival(uint8_t players) {
           SetTile(3+about, 8, type);
         if (alive[1])
           SetTile(3+14+about, 8, type);
+        playSound(CANNON_PATCH);
       }
 
       for (uint8_t i = 0; i < 2; i++) {
@@ -2175,6 +2176,7 @@ void survival(uint8_t players) {
         if (*(tile+VRAM_TILES_H) == RAM_TILES_COUNT+BLOCK_TILE) {
           alive[p] = false;
           SetTile(x, y+1, BLOODY_BLOCK_TILE);
+          playSound(HITS_FLOOR_PATCH);
           continue;
         }
         else {
@@ -2234,10 +2236,14 @@ void survival(uint8_t players) {
       x = 3+14*p+cat[p][0];
       y = cat[p][1];
       tile = vram + (y*VRAM_TILES_H+x);
-      if (*tile == RAM_TILES_COUNT+RED_BALL_TILE)
+      if (*tile == RAM_TILES_COUNT+RED_BALL_TILE) {
         score[p]++;
-      else if (*tile == RAM_TILES_COUNT+GREEN_BALL_TILE)
+        playSound(TAKE_BATTERY_PATCH);
+      }
+      else if (*tile == RAM_TILES_COUNT+GREEN_BALL_TILE) {
         score[p] += 3;
+        playSound(TAKE_BATTERY_PATCH);
+      }
       SetTile(x, y, catDir[p]-RAM_TILES_COUNT);
 
       printColoredShort(13+14*p, 6, score[p], GREEN_NUMBER);
@@ -2252,7 +2258,9 @@ void survival(uint8_t players) {
     controllerEnd();
   }
 
+  WaitVsync(60);
   Print(11, 12, strGameOver);
+  playSound(VICTORY_PATCH);
   if (players > 1) {
     if (score[0] == score[1])
       Print(13, 14, strDraw);
