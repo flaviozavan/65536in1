@@ -2841,6 +2841,7 @@ uint8_t trollen(uint8_t levelNum) {
           outcome = DEFEAT;
 
     /* Hero moving */
+    playSound(HERO_WALKING_PATCH);
     for (uint8_t i = 4; i > 0; i--) {
       ssUnblit(sSprites, 4);
       lastPos = level.hero;
@@ -2894,6 +2895,14 @@ uint8_t trollen(uint8_t levelNum) {
           else if (level.hero.y > level.troll[i].pos.y
               && !(tTile & BOTTOM_WALL))
             trollNext[i].y += 4;
+        }
+      }
+
+      for (uint8_t i = 0; i < 2; i++) {
+        if (level.troll[i].type != NO_TROLL && !level.troll[i].stun
+            && (level.troll[i].pos.x != trollNext[i].x
+              || level.troll[i].pos.y != trollNext[i].y)) {
+          playSound(WALKING_PATCH);
         }
       }
 
@@ -2951,6 +2960,7 @@ uint8_t trollen(uint8_t levelNum) {
               && !level.troll[i].stun
               && level.troll[i].pos.x == level.trap[j].x
               && level.troll[i].pos.y == level.trap[j].y) {
+            playSound(STUNNED_PATCH);
             level.troll[i].stun = 4;
             ssSwitchMap(level.troll[i].type == H_TROLL?
                 stunnedHTrollMap : stunnedVTrollMap,
@@ -2963,6 +2973,7 @@ uint8_t trollen(uint8_t levelNum) {
       if (level.troll[0].pos.x == level.troll[1].pos.x
           && level.troll[0].pos.y == level.troll[1].pos.y
           && level.troll[0].type && level.troll[1].type) {
+        playSound(MERGE_PATCH);
         level.troll[0].type = S_TROLL;
         level.troll[0].stun = 0;
         level.troll[1].type = NO_TROLL;
@@ -2985,10 +2996,14 @@ uint8_t trollen(uint8_t levelNum) {
     }
   }
 
-  if (outcome == VICTORY)
+  if (outcome == VICTORY) {
+    playSound(VICTORY_PATCH);
     Print(8, 12, strCongrat);
-  else
+  }
+  else {
+    playSound(LOSS_PATCH);
     Print(11, 12, strDied);
+  }
 
   while (1) {
       controllerStart();
