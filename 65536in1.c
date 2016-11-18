@@ -1753,6 +1753,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
             ssLoadFromMap(guyMap, sSprites, ox, oy, 0, tileset);
           monsterFixSS(sSprites + (shooting? 4 : 0), 4);
           ssBlit(sSprites, shooting? 8 : 4);
+          playSound(SHORT_WALKING_PATCH);
           WaitVsync(4);
         } while (ox != nx || oy != ny);
       } while (mapGetType(map, x, y) >= CORRIDOR);
@@ -1760,6 +1761,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
       if (shooting) {
         ssUnblit(sSprites+4, 4);
         ssSwitchMap(explosionMap, sSprites+4, tileset);
+        playSound(EXPLOSION_PATCH);
         WaitVsync(30);
         if (mapGetType(map, x, y) == WUMPUS_ROOM)
           shooting = 2;
@@ -1777,11 +1779,12 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
   if (shooting == 2) {
     Print(8, 6, strCongrat);
     Print(4, 14, strKill);
+    playSound(VICTORY_PATCH);
   }
-  else if (mapGetType(map, x, y) == HOLE_ROOM)
-    Print(6, 14, strFell);
-  else
-    Print(6, 14, strAte);
+  else {
+    Print(6, 14, mapGetType(map, x, y) == HOLE_ROOM? strFell : strAte);
+    playSound(LOSS_PATCH);
+  }
 
   while (1) {
     controllerStart();

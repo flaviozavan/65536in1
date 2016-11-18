@@ -24,6 +24,15 @@ const char gets_piece_patch[] PROGMEM = {
   0, PC_SLIDE_SPEED, 8,
   40, PATCH_END,
 };
+const char hero_walking_patch[] PROGMEM = {
+  0, PC_WAVE, 1,
+  0, PC_ENV_SPEED, -32,
+  0, PC_LOOP_START, 2,
+  0, PC_PITCH, 40,
+  0, PC_ENV_VOL, 255,
+  10, PC_LOOP_END, 2,
+  0, PATCH_END,
+};
 const char hits_floor_patch[] PROGMEM = {
   0, PC_WAVE, 1,
   0, PC_PITCH, 45,
@@ -39,6 +48,18 @@ const char loss_patch[] PROGMEM = {
   10, PC_NOTE_DOWN, 5,
   0, PC_ENV_VOL, 255,
   16, PATCH_END,
+};
+const char merge_patch[] PROGMEM = {
+  0, PC_WAVE, 2,
+  0, PC_ENV_SPEED, -6,
+  0, PC_PITCH, 56,
+  10, PC_NOTE_UP, 12,
+  0, PC_ENV_VOL, 255,
+  10, PC_NOTE_UP, 6,
+  0, PC_ENV_VOL, 255,
+  0, PC_SLIDE, -24,
+  0, PC_SLIDE_SPEED, 8,
+  40, PATCH_END,
 };
 const char move_selection_patch[] PROGMEM = {
   0, PC_WAVE, 0,
@@ -88,6 +109,16 @@ const char square_piano[] PROGMEM = {
   4, PC_ENV_SPEED, -7,
   0, PATCH_END,
 };
+const char stunned_patch[] PROGMEM = {
+  0, PC_WAVE, 1,
+  0, PC_ENV_SPEED, -6,
+  0, PC_PITCH, 48,
+  16, PC_NOTE_DOWN, 12,
+  0, PC_ENV_VOL, 255,
+  0, PC_TREMOLO_LEVEL, 64,
+  0, PC_TREMOLO_RATE, 16,
+  48, PATCH_END,
+};
 const char take_battery_patch[] PROGMEM = {
   0, PC_WAVE, 2,
   0, PC_ENV_SPEED, -32,
@@ -112,39 +143,15 @@ const char walking_patch[] PROGMEM = {
   0, PC_LOOP_START, 2,
   0, PC_PITCH, 32,
   0, PC_ENV_VOL, 255,
-  10, PC_LOOP_END, 0,
+  10, PC_LOOP_END, 2,
   0, PATCH_END,
 };
-const char hero_walking_patch[] PROGMEM = {
+const char short_walking_patch[] PROGMEM = {
   0, PC_WAVE, 1,
-  0, PC_ENV_SPEED, -32,
-  0, PC_LOOP_START, 2,
-  0, PC_PITCH, 40,
-  0, PC_ENV_VOL, 255,
-  10, PC_LOOP_END, 0,
-  0, PATCH_END,
-};
-const char merge_patch[] PROGMEM = {
-  0, PC_WAVE, 2,
-  0, PC_ENV_SPEED, -6,
-  0, PC_PITCH, 56,
-  10, PC_NOTE_UP, 12,
-  0, PC_ENV_VOL, 255,
-  10, PC_NOTE_UP, 6,
-  0, PC_ENV_VOL, 255,
-  0, PC_SLIDE, -24,
-  0, PC_SLIDE_SPEED, 8,
-  40, PATCH_END,
-};
-const char stunned_patch[] PROGMEM = {
-  0, PC_WAVE, 1,
-  0, PC_ENV_SPEED, -6,
+  0, PC_ENV_SPEED, -48,
   0, PC_PITCH, 48,
-  16, PC_NOTE_DOWN, 12,
   0, PC_ENV_VOL, 255,
-  0, PC_TREMOLO_LEVEL, 64,
-  0, PC_TREMOLO_RATE, 16,
-  48, PATCH_END,
+  6, PATCH_END,
 };
 const struct PatchStruct patch_struct[] PROGMEM = {
   {0, NULL, square_piano, 0, 0},
@@ -165,6 +172,7 @@ const struct PatchStruct patch_struct[] PROGMEM = {
   {0, NULL, hero_walking_patch, 0, 0},
   {0, NULL, merge_patch, 0, 0},
   {0, NULL, stunned_patch, 0, 0},
+  {0, NULL, short_walking_patch, 0, 0},
 };
 #define CANNON_PATCH 9
 #define EXPLOSION_PATCH 10
@@ -176,6 +184,7 @@ const struct PatchStruct patch_struct[] PROGMEM = {
 #define MOVE_SELECTION_PATCH 2
 #define PHONE_PATCH 13
 #define PLACE_BATTERY_PATCH 3
+#define SHORT_WALKING_PATCH 18
 #define SLIDE_HORIZONTAL_PATCH 7
 #define SLIDE_VERTICAL_PATCH 8
 #define SQUARE_PIANO 0
