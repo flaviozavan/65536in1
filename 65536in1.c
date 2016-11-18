@@ -152,6 +152,7 @@ const char strMonster3[] PROGMEM = "A HOLE";
 const char strMonster4[] PROGMEM = "ITS BREEZE CAN BE";
 const char strMonster5[] PROGMEM = "FELT A ROOM AWAY";
 const char strNoMoves[] PROGMEM = "NO MOVES LEFT";
+const char strToggle[] PROGMEM = "PRESS L TO TOGGLE MUSIC";
 
 const char * const batteries[] PROGMEM = {
   battery0Map,
@@ -239,6 +240,8 @@ struct simpleSprite {
   uint8_t fgSource;
 };
 
+extern Track tracks[CHANNELS];
+extern bool playSong;
 extern uint8_t vram[];
 extern char ram_tiles[];
 /* Controller Handling */
@@ -250,6 +253,7 @@ uint16_t held[2] = {0, 0},
 void controllerStart();
 void controllerEnd();
 void playSound(uint8_t i);
+void cutSong();
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst);
 void rtMirror(char src, char dst);
 void rtRotate90(char src, char dst);
@@ -345,6 +349,13 @@ void controllerEnd() {
 
 void playSound(uint8_t i) {
   TriggerFx(i, 0xff, true);
+}
+
+void cutSong() {
+  for (uint8_t i = 0; i < CHANNELS; i++) {
+    tracks[i].envelopeStep = -128;
+  }
+  playSong = false;
 }
 
 void copyTileToRam(const char *tt, uint8_t src, uint8_t dst) {
@@ -1934,6 +1945,8 @@ void grid(uint8_t players) {
     SetTile(15, 3, WHITE_NUMBER + p+1);
 
     if (p && players == 1) {
+      bool songWasPlaying = IsSongPlaying();
+      cutSong();
       WaitVsync(13);
       DisableSoundEngine();
       struct int8_t_pair m = !turn?
@@ -1941,6 +1954,8 @@ void grid(uint8_t players) {
       x = m.y%3;
       y = m.y/3;
       EnableSoundEngine();
+      if (songWasPlaying)
+        ResumeSong();
       if (turn)
         WaitVsync(30);
     }
@@ -3037,6 +3052,7 @@ uint16_t topmenu() {
   ClearVram();
   DrawMap2(1, 2, titleMap);
   FadeIn(3, true);
+  Print(3, 24, strToggle);
 
   /* Print the list */
   for (i = 0; i < 16; i++) {
@@ -3102,6 +3118,12 @@ uint16_t topmenu() {
         goingUp = 0;
         controllerEnd();
         goto draw_page;
+    }
+    else if (pressed[0] & BTN_SL) {
+      if (IsSongPlaying())
+        cutSong();
+      else
+        ResumeSong();
     }
     /* To properly read the controller */
     else if (pressed[0] & BTN_START) {
@@ -3261,9 +3283,7 @@ int main() {
           r = twoPlayersMenu();
           if (r == 2)
             goto beginning;
-          StopSong();
           grid(r+1);
-          ResumeSong();
           break;
 
         case 2:
