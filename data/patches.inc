@@ -85,6 +85,13 @@ const char place_battery_patch[] PROGMEM = {
   0, PC_ENV_VOL, 255,
   8, PATCH_END,
 };
+const char short_walking_patch[] PROGMEM = {
+  0, PC_WAVE, 1,
+  0, PC_ENV_SPEED, -48,
+  0, PC_PITCH, 48,
+  0, PC_ENV_VOL, 255,
+  6, PATCH_END,
+};
 const char slide_horizontal_patch[] PROGMEM = {
   0, PC_WAVE, 0,
   0, PC_ENV_SPEED, 0,
@@ -103,8 +110,8 @@ const char slide_vertical_patch[] PROGMEM = {
   0, PC_ENV_SPEED, -80,
   4, PATCH_END,
 };
-const char square_piano[] PROGMEM = {
-  0, PC_WAVE, 9,
+const char triangle_piano[] PROGMEM = {
+  0, PC_WAVE, 2,
   0, PC_ENV_SPEED, -15,
   4, PC_ENV_SPEED, -7,
   0, PATCH_END,
@@ -146,16 +153,9 @@ const char walking_patch[] PROGMEM = {
   10, PC_LOOP_END, 2,
   0, PATCH_END,
 };
-const char short_walking_patch[] PROGMEM = {
-  0, PC_WAVE, 1,
-  0, PC_ENV_SPEED, -48,
-  0, PC_PITCH, 48,
-  0, PC_ENV_VOL, 255,
-  6, PATCH_END,
-};
 const struct PatchStruct patch_struct[] PROGMEM = {
-  {0, NULL, square_piano, 0, 0},
-  {0, NULL, square_piano, 0, 0},
+  {0, NULL, triangle_piano, 0, 0},
+  {0, NULL, triangle_piano, 0, 0},
   {0, NULL, move_selection_patch, 0, 0},
   {0, NULL, place_battery_patch, 0, 0},
   {0, NULL, take_battery_patch, 0, 0},
@@ -187,8 +187,8 @@ const struct PatchStruct patch_struct[] PROGMEM = {
 #define SHORT_WALKING_PATCH 18
 #define SLIDE_HORIZONTAL_PATCH 7
 #define SLIDE_VERTICAL_PATCH 8
-#define SQUARE_PIANO 0
 #define STUNNED_PATCH 17
 #define TAKE_BATTERY_PATCH 4
+#define TRIANGLE_PIANO 0
 #define VICTORY_PATCH 5
 #define WALKING_PATCH 14
