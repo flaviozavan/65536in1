@@ -2867,7 +2867,7 @@ uint8_t trollen(uint8_t levelNum) {
 
     /* Hero moving */
     playSound(HERO_WALKING_PATCH);
-    for (uint8_t i = outcome? 2 : 4; i > 0; i--) {
+    for (uint8_t i = outcome == VICTORY? 2 : 4; i > 0; i--) {
       ssUnblit(sSprites, 4);
       lastPos = level.hero;
 
