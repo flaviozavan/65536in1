@@ -1675,6 +1675,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
   uint8_t shooting = 0;
   int8_t nx, ny, ox, oy;
   struct simpleSprite sSprites[8];
+  bool needsRedraw = true;
 
   mapSetVisible(map, x, y);
 
@@ -1686,11 +1687,12 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
 
   while (1) {
     /* Redraw */
-    if (!shooting) {
+    if (!shooting && needsRedraw) {
       monsterDrawMap(map, false);
       ssLoadFromMap(guyMap, sSprites,
           CAVE_OFFSET_X+x*2, CAVE_OFFSET_Y+y*2, 0, tileset);
       ssBlit(sSprites, 4);
+      needsRedraw = false;
     }
 
     /* Draw the targets if shooting */
@@ -1724,6 +1726,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
       d = 3;
     }
     else if (pressed[0] & BTN_A) {
+      needsRedraw = true;
       shooting ^= 1;
     }
     else if (pressed[0] & BTN_SELECT) {
@@ -1732,6 +1735,7 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
 
     /* Moving */
     if (d != 0xff) {
+      needsRedraw = true;
       yy = y;
       xx = x;
       do {
