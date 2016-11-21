@@ -636,7 +636,7 @@ void greed(uint8_t human) {
         }
         else if (pressed[t] & BTN_A && v < array[w]) {
           greed_apply:
-          playSound(TAKE_BATTERY_PATCH);
+          playSound(MOVE_SELECTION_PATCH);
           array[w] = v;
           printColoredByte(5 + 5 * w, 24, array[w], WHITE_NUMBER);
           w = 0;
