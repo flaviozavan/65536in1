@@ -1705,7 +1705,8 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
         targetMap);
     }
     /* End game */
-    if (mapGetType(map, x, y) >= WUMPUS_ROOM) break;
+    if (mapGetType(map, x, y) >= WUMPUS_ROOM)
+      break;
 
     controllerStart();
     d = 0xff;
@@ -1797,9 +1798,10 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
     playSound(LOSS_PATCH);
   }
 
-  while (1) {
+  for (bool done = false; !done;) {
     controllerStart();
-    if (pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START)
+      done = true;
     WaitVsync(1);
     controllerEnd();
   }
@@ -1808,9 +1810,10 @@ void monsterPlay(uint8_t map[CAVE_HEIGHT][(CAVE_WIDTH+1)/2],
   monsterDrawMap(map, true);
   ssBlit(sSprites, (shooting? 8 : 4));
 
-  while (1) {
+  for (bool done = false; !done;) {
     controllerStart();
-    if (pressed[0] & BTN_START) break;
+    if (pressed[0] & BTN_START)
+      done = true;
     WaitVsync(1);
     controllerEnd();
   }
