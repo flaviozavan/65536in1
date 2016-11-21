@@ -6,7 +6,7 @@ const char cannon_patch[] PROGMEM = {
   4, PATCH_END,
 };
 const char explosion_patch[] PROGMEM = {
-  0, PC_WAVE, 0,
+  0, PC_WAVE, 1,
   0, PC_ENV_SPEED, -32,
   0, PC_LOOP_START, 2,
   0, PC_PITCH, 30,
@@ -110,12 +110,6 @@ const char slide_vertical_patch[] PROGMEM = {
   0, PC_ENV_SPEED, -80,
   4, PATCH_END,
 };
-const char triangle_piano[] PROGMEM = {
-  0, PC_WAVE, 2,
-  0, PC_ENV_SPEED, -15,
-  4, PC_ENV_SPEED, -7,
-  0, PATCH_END,
-};
 const char stunned_patch[] PROGMEM = {
   0, PC_WAVE, 1,
   0, PC_ENV_SPEED, -6,
@@ -133,6 +127,12 @@ const char take_battery_patch[] PROGMEM = {
   4, PC_NOTE_DOWN, 10,
   0, PC_ENV_VOL, 255,
   8, PATCH_END,
+};
+const char triangle_piano[] PROGMEM = {
+  0, PC_WAVE, 2,
+  0, PC_ENV_SPEED, -15,
+  4, PC_ENV_SPEED, -7,
+  0, PATCH_END,
 };
 const char victory_patch[] PROGMEM = {
   0, PC_WAVE, 1,
