@@ -153,6 +153,7 @@ const char strMonster4[] PROGMEM = "ITS BREEZE CAN BE";
 const char strMonster5[] PROGMEM = "FELT A ROOM AWAY";
 const char strNoMoves[] PROGMEM = "NO MOVES LEFT";
 const char strToggle[] PROGMEM = "PRESS L TO TOGGLE MUSIC";
+const char strVersion[] PROGMEM = "V1.01";
 
 const char * const batteries[] PROGMEM = {
   battery0Map,
@@ -3060,6 +3061,7 @@ uint16_t topmenu() {
   DrawMap2(1, 2, titleMap);
   FadeIn(3, true);
   Print(3, 24, strToggle);
+  Print(1, 26, strVersion);
 
   /* Print the list */
   for (i = 0; i < 16; i++) {
